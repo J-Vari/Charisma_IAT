@@ -1,0 +1,868 @@
+---
+title: "Data cleaning of IAT_Audio_Swabian"
+author: "Judit Vari"
+date: "9 1 2024"
+output: html_document
+---
+
+# load libraries
+```{r setup, include=FALSE}
+library (dplyr)
+library(tidyr)
+library(broom)
+library(stringr)
+library(readr)
+library(stringdist)
+library(lubridate)
+library(here)
+
+options(scipen=999)
+```
+# read data
+```{r read, include=FALSE}
+data_raw <- read_delim(here("raw_data", "jatos_results_data_17.01.24.csv"), col_names = TRUE, delim = ",")
+```
+# Multiple participation
+identify participants who have multiple sessions
+
+```{r multi part_1, include=FALSE}
+```
+# # Multiple participation
+
+understand source for multi. participation
+
+```{r multi part_2, include=FALSE}
+data_raw %>%
+  group_by (bilendi_id)%>%
+  summarise (n_distinct (sessionid))-> multi_part 
+
+data_raw %>%
+  filter (bilendi_id == "264443801636864" | bilendi_id == "263320741943482" | bilendi_id == "263320741953628" | bilendi_id == "264559562072251" |  bilendi_id == "264560246627553" | bilendi_id == "265003370475767")%>%
+  select (bilendi_id, sessionid, moment, meta_browser_codename, meta_system_os, meta_date_startdate, meta_date_starttime, stimulus_ID, trialcount, response_time, correct, feedback_q1, feedback_q2, age, gender)-> multi_pp
+
+multi_pp%>%
+  group_by(meta_system_os)%>%
+  summarise(n_distinct(bilendi_id), n_distinct(sessionid))->sum_multi_pp # Mac: 4 Bilendi IDs 8x Session_ID, Windows: 2 bilendi_id & 5 x session_ID # kick Windows multiple session, keep Mac and take second session
+
+
+multi_pp%>%
+  filter(meta_system_os == "MacIntel")-> multi_pp_mac
+   
+multi_pp%>%
+summarise(unique(multi_pp$bilendi_id), n_distinct(sessionid))-> multi_pp_mac_sum # 6 Bilendi IDs?
+  
+  # find later session
+
+multi_pp_mac %>%
+  mutate(timestamp = strptime(meta_date_starttime, format = "%H:%M:%S"),
+         time_string = format(timestamp, format = "%H:%M:%S"),
+         time_numeric = hour(timestamp) * 3600 + minute(timestamp) * 60 + second(timestamp)) -> multi_pp_mac
+
+
+multi_pp_mac%>%
+  group_by(bilendi_id)%>%
+  slice_min(time_numeric)->pp_mac_singl
+
+# quick and dirty # kick them all
+
+data_raw %>%
+  filter (bilendi_id != "264443801636864" & bilendi_id != "263320741943482" & bilendi_id != "263320741953628" & bilendi_id != "264559562072251" &  bilendi_id != "264560246627553" & bilendi_id != "265003370475767")-> data_raw
+
+#check multi part
+
+data_raw %>%
+  group_by (bilendi_id)%>%
+  summarise (n_distinct (sessionid))-> multi_part # worked
+
+# how many rows per pp: between 194 & 198 rows
+
+data_raw %>%
+  group_by(bilendi_id, moment) %>%
+  summarise(row_count = n()) -> check_rows_per_pp_moment
+
+check_rows_per_pp_moment%>%
+  ungroup()%>%
+  filter (moment == "pre_selection") %>%
+  summarise (max (row_count), min (row_count), mean (row_count))->sum_rows_per_preselect # max 7, min 3, mean 4
+
+
+check_rows_per_pp_moment%>%
+  ungroup()%>%
+  filter (moment == "IAT") %>%
+  summarise (max (row_count), min (row_count), mean (row_count))->sum_rows_per_IAT # almost all pp 190 rows but some 191 rows
+
+check_rows_per_pp_moment%>%
+  ungroup()%>%
+  filter (moment == "questionnaire") %>%
+  summarise (max (row_count), min (row_count), mean (row_count))->sum_rows_per_Q # all pp 1 row
+
+# why different row no.s?
+data_raw %>%
+  group_by(bilendi_id) %>%
+  filter(n()< 198) -> pp_low_row
+```
+# integrate Questionnaire data into IAT data
+aim: each pre-selection as well as IAT observation row contains questionnaire data values
+```{r cleaning_two_data_sets, include=FALSE}
+
+
+# create two data sets
+data_raw%>%
+  filter(moment== "questionnaire")%>%
+  select(bilendi_id, moment, age, bundesland, gender, education, education_other, employment_status, monthly_income, training, training2,             training_other, training_other2, family_member1, 
+                     family_member1_other, family_member1_response, family_member2, 
+                     family_member2_other, family_member2_response, family_member3,
+          family_member3_other, family_member3_response, other_languages, 
+                     ideology, ideology_no_answer, ideology_unknown, voting_behaviour, 
+                     voting_other, populism1, populism2, populism3, populism4, 
+                     statement1, statement2, statement3, statement4, statement5, 
+                     statement6, statement7, statement8, statement9, feedback_q1, feedback_q2) -> Quest_data # 748
+
+
+data_raw%>%
+  filter(moment== "IAT" | moment== "pre_selection")%>%
+  select(-age, -bundesland, -gender, -education, -education_other, -employment_status, -monthly_income, -training, -training2,          -training_other, -training_other2, -family_member1,                    -family_member1_other, -family_member1_response, -family_member2, -family_member2_other, -family_member2_response, -family_member3, -family_member3_other, -family_member3_response, -other_languages, 
+                     -ideology, -ideology_no_answer, -ideology_unknown, -voting_behaviour, 
+                     -voting_other, -populism1, -populism2, -populism3, -populism4, 
+                    -statement1, -statement2, -statement3, -statement4, -statement5, 
+                     -statement6, -statement7, -statement8, -statement9, -feedback_q1, -feedback_q2) -> data_IAT_Pre_selc # 145.819
+
+
+# join tables
+
+left_join(data_IAT_Pre_selc, Quest_data, by = c("bilendi_id"),  relationship = "many-to-many")-> data_raw
+# 104 columns, 148.918 rows # moment.x & moment.y
+
+missing_values_before <- data_raw %>%
+  summarise(across(everything(), ~ sum(is.na(.))))
+# no NAs created 
+
+rename(data_raw, moment = moment.x)->data_raw
+
+#how many rows per pp
+
+data_raw %>%
+  group_by(bilendi_id, moment) %>%
+  summarise(row_count = n()) -> check_rows_per_pp_moment
+
+data_raw%>%
+filter(blockno != 8)->data_raw
+
+```
+# delete superfluous column names in values 
+```{r clean_columns, include=FALSE}
+# clean columns containing column names as values
+
+columns_to_process <- c("populism1", "populism2", "populism3", "populism4", "statement1", "statement2", "statement3", "statement4", "statement5", "statement6", "statement7", "statement8", "statement9")
+
+data_raw <- data_raw %>%
+  mutate_at(vars(columns_to_process), funs(str_replace(., "\\w+-", "")))
+```
+# transform age variable
+```{r age_clean, include=FALSE}
+
+data_raw %>%
+  filter (age >80)%>%
+  summarise (n_distinct (bilendi_id)) -> pp_year
+
+data_raw %>%
+  filter (age >80)%>%
+  distinct (bilendi_id, age) -> pp_year # two rubbish: 150 & 558, one 83 and one 1980
+
+data_raw %>%
+  filter (age< 18)%>%
+  distinct (bilendi_id, age) -> pp_age_bad # 4 pp. two rubbish, two under aged?
+
+data_raw%>%
+  mutate(age = ifelse (age == 1980, 44, age))%>%
+  mutate(age = ifelse (age < 18, 18, age))%>%
+  mutate(age = ifelse (age > 83, NA, age)) -> data_raw
+
+data_raw%>%
+  distinct(bilendi_id, age)%>%
+  summarise(sum(is.na(age)))-> age_NA # 4 NAs
+
+data_raw%>%
+  drop_na (age)%>%
+  summarise(mean(age), sd (age), min (age), max (age))-> age_sum
+
+```
+# Rename variables
+```{r rename variables, include=FALSE}
+rename(data_raw, charisma_lang_var = right_dialect_trial) -> data_raw
+rename(data_raw, start_iat = cat_order_iat) -> data_raw
+rename(data_raw, pp_gender = gender) -> data_raw
+```
+# assign classes
+```{r classes, include=FALSE}
+data_raw$ideology <- as.numeric(data_raw$ideology)
+data_raw$populism1 <- as.numeric(data_raw$populism1)
+data_raw$populism2 <- as.numeric(data_raw$populism2)
+data_raw$populism3 <- as.numeric(data_raw$populism3)
+data_raw$populism4 <- as.numeric(data_raw$populism4)
+data_raw$age <- as.numeric(data_raw$age)
+data_raw$bilendi_id <- as.numeric(data_raw$bilendi_id)
+data_raw$trialcount <- as.numeric(data_raw$trialcount)
+
+
+data_raw$bundesland <- as.factor(data_raw$bundesland)
+data_raw$education<- as.factor(data_raw$education)
+data_raw$education_other<- as.factor(data_raw$education_other)
+data_raw$employment_status<- as.factor(data_raw$employment_status)
+data_raw$family_member1<- as.factor(data_raw$family_member1)
+data_raw$family_member2<- as.factor(data_raw$family_member2)
+data_raw$family_member3_<- as.factor(data_raw$family_member3)
+data_raw$family_member1_other<- as.factor(data_raw$family_member1_other)
+data_raw$family_member2_other<- as.factor(data_raw$family_member2_other)
+data_raw$family_member3_other<- as.factor(data_raw$family_member3_other)
+data_raw$pp_gender<- as.factor(data_raw$pp_gender)
+data_raw$ideology_no_answer<- as.factor(data_raw$ideology_no_answer)
+data_raw$ideology_unknown<- as.factor(data_raw$ideology_unknown)
+data_raw$leadership_lang_var<- as.factor(data_raw$leadership_lang_var)
+data_raw$left_dialect_trial<- as.factor(data_raw$left_dialect_trial)
+data_raw$left_leadership_trial<- as.factor(data_raw$left_leadership_trial)
+data_raw$moment<- as.factor(data_raw$moment)
+data_raw$monthly_income<- as.factor(data_raw$monthly_income)
+data_raw$speaker_gender<- as.factor(data_raw$speaker_gender)
+data_raw$statement1 <- as.factor(data_raw$statement1)
+data_raw$statement2 <- as.factor(data_raw$statement2)
+data_raw$statement3 <- as.factor(data_raw$statement3)
+data_raw$statement4 <- as.factor(data_raw$statement4)
+data_raw$statement5 <- as.factor(data_raw$statement5)
+data_raw$statement6 <- as.factor(data_raw$statement6)
+data_raw$statement7 <- as.factor(data_raw$statement7)
+data_raw$statement8 <- as.factor(data_raw$statement8)
+data_raw$statement9 <- as.factor(data_raw$statement9)
+data_raw$stim_cat<- as.factor(data_raw$stim_cat)
+data_raw$training<- as.factor(data_raw$training)
+data_raw$training2<- as.factor(data_raw$training2)
+data_raw$training_other<- as.factor(data_raw$training_other)
+data_raw$training_other2<- as.factor(data_raw$training_other2)
+data_raw$voting_behaviour<- as.factor(data_raw$voting_behaviour)
+data_raw$voting_other<- as.factor(data_raw$voting_other)
+```
+# Rename levels
+```{r rename levels, include=FALSE}
+
+data_raw%>%
+  mutate (charisma_lang_var = ifelse(charisma_lang_var == "Dialekt", "vernacular", "standard"))->data_raw
+
+#check 
+unique(data_raw$charisma_lang_var)# standard"   "vernacular"
+unique(data_raw$right_leadership_trial) # False &  mit Charisma
+unique(data_raw$stim_cat) # "dialect2", dialect1", "leadership2", "leadership1"
+
+
+#cat_order_iat
+data_raw%>%
+  mutate(start_iat = case_when(start_iat == 0 ~ "standard-with Charisma", start_iat == 1 ~ "vernacular-with Charisma", TRUE ~ "NA"))->data_raw
+
+# check
+unique(data_raw$start_iat)
+```
+# create new variables
+```{r new variables, include=FALSE}
+# create more general stimulus category variable 
+
+data_raw%>% 
+  mutate (stim_cat = ifelse (stim_cat == "dialect1" | stim_cat == "dialect2", "lang.var", "leadership"))-> result
+unique(result$stim_cat)
+
+# new variable: education & training
+
+ result%>%
+   mutate (sum_training = case_when
+(training == "Berufsfachschulabschluss" ~ "low",
+training == "Fachhochschulabschluss" ~ "high",
+training == "Fachschulabschluss" ~ "middle",
+training == "Hochschulabschluss (Bachelor)" ~ "high",
+training == "Hochschulabschluss (Master)" ~ "high",
+training == "Hochschulabschluss (Promotion)" ~ "high",
+training == "Keinen" ~ "low",
+training == "Meister/in, Technikerabschluss" ~ "middle",
+training == "Teilfacharbeiterabschluss" ~ "low",
+training == "abgeschlossene gewerbliche oder landwirtschaftliche Lehre" ~ "middle",
+training == "abgeschlossene kaufmännische Lehre" ~ "middle",
+training == "andere" ~ "middle",
+training == "beruflich-betriebliche Anlernzeit mit Abschlusszeugnis, aber keine Lehre" ~ "low", TRUE ~ NA))-> result
+ 
+
+ result%>%
+   mutate (sum_education = case_when
+(education == "Schule beendet ohne Abschluss"  ~ "low",
+education == "Hauptschulabschluss, Volksschulabschluss, Abschluss der polytechnischen Oberschule 8. oder 9. Klasse" ~ "low",
+education == "Realschulabschluss, Mittlere Reife, Fachschulreife oder Abschluss der polytechnischen Oberschule 10. Klasse" ~ "middle",
+education == "Fachhochschulreife (Abschluss einer Fachoberschule etc.)" ~ "high",
+education == "Abitur bzw. erweiterte Oberschule mit Abschluss 12. Klasse (Hochschulreife)" ~ "high",
+education == "bin noch Schüler/in" ~ "still at school",
+education == "andere" ~ "other",
+education == "NA" ~ "NA", TRUE ~ NA))-> result
+ 
+```
+# clean pre-selection variables
+```{r pre-select, include=FALSE}
+# cat1_: leadership1 = „mit Charisma“
+# cat2_: leadership2 = „ohne Charisma“
+# cat1/2_list: Logging of final selection for leadership attributes of leadership category 1. Each attribute with associated rank
+# cat1/2_top_6: Logging of top 6  selection of leadership attributes, used later for the IAT
+
+# cat1_list,cat1_top_6, cat2_list, cat2_top_6 nested list variables 
+
+result %>%
+  filter(moment== "pre_selection")%>%
+  select(bilendi_id, cat1_list, cat2_list)%>%
+ mutate(cat1_list = str_remove_all(cat1_list, "\\[|\\]|'"))%>%
+mutate(cat2_list = str_remove_all(cat2_list, "\\[|\\]|'"))%>% 
+   separate(cat1_list, sep = ", ", into = c("chariAttribute_1", "char_rank_1", "chariAttribute_2", "char_rank_2", "chariAttribute_3", "char_rank_3", "chariAttribute_4", "char_rank_4", "chariAttribute_5", "char_rank_5", "chariAttribute_6", "char_rank_6", "chariAttribute_7", "char_rank_7", "chariAttribute_8", "char_rank_8", "chariAttribute_9", "char_rank_9", "chariAttribute_10", "char_rank_10"))%>% 
+   separate(cat2_list, sep = ", ", into = c("wochariAttribute_1", "wo_char_rank_1", "wochariAttribute_2", "wo_char_rank_2", "wochariAttribute_3", "wo_char_rank_3", "wochariAttribute_4", "wo_char_rank_4", "wochariAttribute_5", "wo_char_rank_5", "wochariAttribute_6", "wo_char_rank_6", "wochariAttribute_7", "wo_char_rank_7", "wochariAttribute_8", "wo_char_rank_8", "wochariAttribute_9", "wo_char_rank_9", "wochariAttribute_10", "wo_char_rank_10"))%>%
+  distinct()-> data_pre_select
+ 
+ 
+data_pre_select%>%
+  select(-char_rank_1, -char_rank_2, -char_rank_3, -char_rank_4, -char_rank_5, -char_rank_6, -char_rank_7, -char_rank_8, -char_rank_9, -char_rank_10, -wo_char_rank_1, -wo_char_rank_2, -wo_char_rank_3, -wo_char_rank_4, -wo_char_rank_5, -wo_char_rank_6, -wo_char_rank_7, -wo_char_rank_8, -wo_char_rank_9, -wo_char_rank_10, )-> data_pre_select
+
+data_pre_select%>%
+  pivot_longer(2:21, names_to = "Rank", values_to = "Pre_select_Attribute")%>%
+  separate(Rank, sep = "_", into = c("Pre_select_type","Pre_select_Rank"))->data_pre_select
+
+result%>%
+  select(-cat1_top_6, -cat2_top_6, -cat1_list, -cat2_list)->result
+
+
+write_delim(data_pre_select, here("data_processed", "result_preselect_clean.csv"), col_names = TRUE, delim = ",")
+```
+# Marlowe- Crowne social desirability score
+```{r MCSD, include=FALSE}
+
+# scoring: 1 for "true” to a socially desirable item or “false” to a socially undesirable item.
+# scoring: 0 for “false” to a socially desirable item or “true” to a socially undesirable item.
+# key: socially desirable answer: statement1-9 1 point for correct answer see key
+
+# total score: summing up the scores for all items
+# higher scores = higher SD/ “need for approval” 
+
+
+# statement 1: Ich bin manchmal verärgert, wenn ich meinen Willen nicht bekomme. socially undesirable, key: FALSE
+# statement 2: Ganz gleich mit wem ich mich unterhalte, ich bin immer ein/e gute/r ZuhörerIn. socially desirable key: TRUE
+# statement 3: Es hat Situationen gegeben, in denen ich jemanden ausgenutzt habe. key: FALSE
+# statement 4: Ich bin immer bereit zuzugeben, wenn ich einen Fehler mache; key: TRUE
+# statement 5: Ich versuche manchmal, es jemandem heimzuzahlen, anstatt zu vergeben und zu vergessen.key: FALSE
+# statement 6: Gelegentlich hatte ich Lust, Dinge zu zerschlagen. key: FALSE
+# statement 7: Manchmal bin ich neidisch, wenn andere Glück haben; key: FALSE
+# statement 8:Ich hatte niemals das Gefühl, ohne Grund bestraft zu werden; key: TRUE
+# statement 9: Ich habe niemals mit Absicht etwas gesagt, was die Gefühle des anderen verletzt hat. Key: TRUE
+
+result %>%
+  mutate(score_statement1 = ifelse(statement1 == "false", 1, 0),
+         score_statement2 = ifelse(statement2 == "true", 1, 0),
+         score_statement3 = ifelse(statement3 == "false", 1, 0),
+         score_statement4 = ifelse(statement4 == "true", 1, 0),
+         score_statement5 = ifelse(statement5 == "false", 1, 0),
+         score_statement6 = ifelse(statement6 == "false", 1, 0),
+         score_statement7 = ifelse(statement7 == "false", 1, 0),
+         score_statement8 = ifelse(statement8 == "true", 1, 0),
+         score_statement9 = ifelse(statement9 == "true", 1, 0))%>%
+  mutate(score_MCSD = rowSums(select(., starts_with("score_statement"))))-> result
+
+```
+# Lang. bio: Identify ingroup/ exposure to non-standard variety
+## Prep
+```{r lang.bio_prep, include=FALSE}
+
+result %>%
+  select(bilendi_id, bundesland, family_member1_response, family_member2_response, family_member3_response)%>%
+  group_by(bilendi_id)->result_lang.bio
+
+  distinct(result_lang.bio)->result_lang.bio
+
+   str_trim(result_lang.bio$family_member1_response)
+   str_trim(result_lang.bio$family_member2_response)
+   
+   keywords <-read_delim(here::here("data_processed", "keywords.csv"), col_names = TRUE, delim = ";")
+   
+
+# Rename columns for clarity
+colnames(keywords) <- c("non.st.outgr", "non.st.ingr", "non.st.unspecific", "bilinguals", "st", "other")
+```
+## lang.bio: family member 1
+```{r lang.bio1, include=FALSE}
+# calculate distances of answers to target words and create categorical variable
+
+# separate participants' response to family_member1 in several columns
+result_lang.bio %>%
+  separate(family_member1_response, sep = "\\s+|/|,", into = c("family_member1_response1a", "family_member1_response1b", "family_member1_response1c", "family_member1_response1d", "family_member1_response1e"), remove = F)%>%  separate(family_member2_response, sep = "\\s+|/|,", into = c("family_member2_response1a", "family_member2_response1b", "family_member2_response1c", "family_member2_response1d", "family_member2_response1e"), remove = F)->result_lang.bio
+
+   str_trim(result_lang.bio$family_member1_response1a)
+   str_trim(result_lang.bio$family_member1_response1b)
+   str_trim(result_lang.bio$family_member1_response1c)
+   str_trim(result_lang.bio$family_member1_response1d)
+   str_trim(result_lang.bio$family_member1_response1e)
+   
+   str_trim(result_lang.bio$family_member2_response1a)
+   str_trim(result_lang.bio$family_member2_response1b)
+   str_trim(result_lang.bio$family_member2_response1c)
+   str_trim(result_lang.bio$family_member2_response1d)
+   str_trim(result_lang.bio$family_member2_response1e)
+
+   
+#family member1: Response A
+
+# Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family1_response1a_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member1_response1a[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family1_response1a_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+
+# family member1: Response B
+
+
+##  Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family1_response1b_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member1_response1b[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family1_response1b_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+#family member 1: Response C
+
+
+##  Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family1_response1c_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member1_response1c[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family1_response1c_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+#family member 1: Response D
+
+
+##  Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family1_response1d_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member1_response1d[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family1_response1d_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+#family member 1: Response E
+
+
+##  Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family1_response1e_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member1_response1e[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family1_response1e_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+# create final variable for family member 1 with min. distance categorisation
+
+result_lang.bio %>%
+  mutate(
+    family_member1_cat.response = case_when(
+      # Conditions for family_member1_response1a-e
+
+family1_response1a_distance_to_non.st.ingr < 2 | family1_response1b_distance_to_non.st.ingr < 2 | family1_response1c_distance_to_non.st.ingr < 2 | family1_response1d_distance_to_non.st.ingr < 2 | family1_response1e_distance_to_non.st.ingr < 2 ~ "non_st.ingroup",
+
+family1_response1a_distance_to_non.st.outgr < 2 | family1_response1b_distance_to_non.st.outgr < 2 | family1_response1c_distance_to_non.st.outgr < 2 | family1_response1d_distance_to_non.st.outgr< 2 | family1_response1e_distance_to_non.st.outgr < 2 ~ "non_st.outgroup",
+
+family1_response1a_distance_to_bilinguals < 2 | family1_response1b_distance_to_bilinguals < 2 | family1_response1c_distance_to_bilinguals < 2 | family1_response1d_distance_to_bilinguals< 2 | family1_response1e_distance_to_bilinguals < 2 ~ "bilingual", 
+
+#family1_response1a_distance_to_non.st.unspecific < 1 | family1_response1b_distance_to_non.st.unspecific < 1 | family1_response1c_distance_to_non.st.unspecific < 1 | family1_response1d_distance_to_non.st.unspecific < 1 | family1_response1e_distance_to_non.st.unspecific < 1 ~ "non.st.unspecific", 
+
+family1_response1a_distance_to_st < 2 | family1_response1b_distance_to_st < 2 | family1_response1c_distance_to_st < 2 | family1_response1d_distance_to_st < 2 | family1_response1e_distance_to_st < 2 ~ "standard",
+
+  family1_response1a_distance_to_other < 2 | family1_response1b_distance_to_other < 2 | family1_response1c_distance_to_other < 2 | family1_response1d_distance_to_other < 2 | family1_response1e_distance_to_other < 2 ~ "other",
+
+
+
+      TRUE                      ~ "NA"
+    )) -> result_lang.bio
+
+result_lang.bio%>%
+  select(
+    bilendi_id, 
+    family_member1_response1a,     family_member1_response1b, family_member1_response1c, 
+    family_member1_response1d, family_member1_response1e,family_member1_cat.response) -> check_family1
+```
+## lang.bio: family member 2
+```{r lang.bio_fam2, include=FALSE}
+#family member2: Response A
+
+# Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family1_response1a_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member2_response1a[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family2_response1a_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+
+# family member2: Response B
+
+
+##  Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family2_response1b_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member2_response1b[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family2_response1b_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+#family member 2: Response C
+
+
+##  Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family2_response1c_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member2_response1c[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family2_response1c_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+#family member 2: Response D
+
+
+##  Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family2_response1d_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member2_response1d[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family2_response1d_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+#family member 2: Response E
+
+
+##  Create empty columns to store distances for each keyword
+for (keyword_col in colnames(keywords)) {
+  result_lang.bio[paste0("family2_response1e_distance_to_", keyword_col)] <- NA
+}
+
+# Loop through each participant's response
+for (i in 1:nrow(result_lang.bio)) {
+  response <- result_lang.bio$family_member2_response1e[i]
+  
+  # Loop through each keyword column
+  for (keyword_col in colnames(keywords)) {
+    # Calculate distances for each keyword in the column
+    distances <- sapply(keywords[[keyword_col]], function(keyword) {
+      stringdist::stringdist(response, keyword, method = "osa")
+    })
+    
+    # Check for missing values in distances
+    if (any(!is.na(distances))) {
+      # Take the minimum distance
+      min_distance <- min(distances, na.rm = TRUE)
+    } else {
+      # If all distances are NA, set min_distance to NA
+      min_distance <- NA
+    }
+    
+    # Assign the minimum distance to the corresponding column in the result dataset
+    result_lang.bio[i, paste0("family2_response1e_distance_to_", keyword_col)] <- min_distance
+  }
+}
+
+# create final variable for family member 2 with min. distance categorisation
+
+result_lang.bio %>%
+  mutate(
+    family_member2_cat.response = case_when(
+      # Conditions for family_member2_response1a-e
+
+family2_response1a_distance_to_non.st.ingr < 2 | family2_response1b_distance_to_non.st.ingr < 2 | family2_response1c_distance_to_non.st.ingr < 2 | family2_response1d_distance_to_non.st.ingr < 2 | family2_response1e_distance_to_non.st.ingr < 2 ~ "non_st.ingroup",
+
+family2_response1a_distance_to_non.st.outgr < 2 | family2_response1b_distance_to_non.st.outgr < 2 | family2_response1c_distance_to_non.st.outgr < 2 | family2_response1d_distance_to_non.st.outgr< 2 | family2_response1e_distance_to_non.st.outgr < 2 ~ "non_st.outgroup",
+
+family2_response1a_distance_to_bilinguals < 2 | family2_response1b_distance_to_bilinguals < 2 | family2_response1c_distance_to_bilinguals < 2 | family2_response1d_distance_to_bilinguals< 2 | family2_response1e_distance_to_bilinguals < 2 ~ "bilingual", 
+
+#family2_response1a_distance_to_non.st.unspecific < 1 | family2_response1b_distance_to_non.st.unspecific < 1 | family2_response1c_distance_to_non.st.unspecific < 1 | family2_response1d_distance_to_non.st.unspecific < 1 | family2_response1e_distance_to_non.st.unspecific < 1 ~ "non.st.unspecific", 
+
+family2_response1a_distance_to_st < 2 | family2_response1b_distance_to_st < 2 | family2_response1c_distance_to_st < 2 | family2_response1d_distance_to_st < 2 | family2_response1e_distance_to_st < 2 ~ "standard",
+
+  family2_response1a_distance_to_other < 2 | family2_response1b_distance_to_other < 2 | family2_response1c_distance_to_other < 2 | family2_response1d_distance_to_other < 2 | family2_response1e_distance_to_other < 2 ~ "other",
+
+
+
+      TRUE                      ~ "NA"
+    )) -> result_lang.bio
+
+result_lang.bio%>%
+  select(
+    bilendi_id, 
+    family_member2_response1a,     family_member2_response1b, family_member2_response1c, 
+    family_member2_response1d, family_member2_response1e,family_member2_cat.response) -> check_family2
+
+
+# final data set 
+
+result_lang.bio%>%
+  select(bilendi_id, family_member1_response, family_member2_response, family_member1_cat.response, family_member2_cat.response)-> result_lang.bio
+```
+# Lang.bio
+## integrate with main data set result
+```{r lang.bio integrate, include=FALSE}
+
+# join tables
+
+left_join(result, result_lang.bio, by = c("bilendi_id", "family_member1_response", "family_member2_response"), relationship = "many-to-many")-> result
+```
+# descriptives
+```{r descriptives, include=FALSE}
+
+
+# Social desirability Scale
+result %>%
+  drop_na(score_MCSD)%>%
+  summarise(
+    mean(score_MCSD),
+    sd(score_MCSD)
+  ) -> sum_MCSD
+
+# language bio
+result%>%
+  group_by(family_member1_cat.response)%>%
+  summarise(n_distinct(bilendi_id))->pp_lang.bio_fam1
+
+result%>%
+  group_by(family_member2_cat.response)%>%
+  summarise(n_distinct(bilendi_id))->pp_lang.bio_fam2
+
+# sum_training
+result%>%
+  group_by(sum_training)%>%
+  summarise(n_distinct(bilendi_id))->pp_sum_training
+
+# education
+result%>%
+  group_by(education)%>%
+  summarise(n_distinct(bilendi_id))->pp_education
+
+# sum_education
+result%>%
+  group_by(sum_education)%>%
+  summarise(n_distinct(bilendi_id))->pp_sum_education
+
+# pp_gender
+
+result%>%
+  group_by(pp_gender)%>%
+  summarise(n_distinct(bilendi_id))->pp_gender # two pp divers
+
+# lang.bio fam
+
+result%>%
+  group_by(training)%>%
+  summarise(n_distinct(bilendi_id))->pp_training
+```
+# Export data as csv
+
+```{r export, include=FALSE}
+
+write_delim(result, here("data_processed", "result_clean.csv"), col_names = TRUE, delim = ",")
+
+```
