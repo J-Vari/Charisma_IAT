@@ -1347,7 +1347,7 @@ as.numeric(scale(Four_In$age)) -> Four_In$age
 
 Four_In$start_iat = relevel(Four_In$start_iat , ref = "standard-with Charisma")
 
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + speaker_gender + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1_in
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + speaker_gender + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1_in
 summary (model1_in)
 anova(model1_in)
 emmeans(model1_in, specs = pairwise ~ charisma_lang_var:start_iat) # 2nd block diff. not sign
@@ -1355,10 +1355,10 @@ emmeans(model1_in, specs = pairwise ~ charisma_lang_var:start_iat) # 2nd block d
 # best fit 
 
 
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age  + (1|bilendi_id) +  (charisma_lang_var|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_best_in
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age  + (start_iat|bilendi_id) +  (charisma_lang_var|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_best_in
 summary (model_best_in) # no convergence
 
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age  + (1|bilendi_id) +  (1|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_best_in
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age  + (start_iat|bilendi_id) +  (1|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_best_in
 summary (model_best_in)
 anova(model_best_in)
 
