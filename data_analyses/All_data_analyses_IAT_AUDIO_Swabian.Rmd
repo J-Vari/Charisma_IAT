@@ -1062,11 +1062,24 @@ anova(model5highPop)
 ```
 ## political background measures
 ### political ideology
-```{r political bckgr ideology, echo=FALSE}
+```{r political ideology, echo=FALSE}
+
+#as.numeric(scale(Four_Out$ideology))->Four_Out$ideology
+
 lmer (penal_RTs ~ charisma_lang_var*start_iat*ideology + trialcount  + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5c
 summary (model5c)
 anova(model5c)
+emtrends(model5c, ~ charisma_lang_var | start_iat, var = "ideology")
 
+plot_model(model5c, type = "pred", terms = c("ideology", "charisma_lang_var",  "start_iat")) +
+   ylab ("RT")+
+    xlab ("political ideoloy left - right")+
+  labs(colour="lang. variety mapped with Charisma")+
+  labs ( title = "Predicted values of RT", subtitle = "grouped by started IAT with mapping")->plot_ideol_lang.varXstart
+  
+plot_ideol_lang.varXstart
+
+ggsave(here("Output", "plot_ideol_lang.varXstart.jpg"))
 
 ```
 ## political background measures
@@ -1111,7 +1124,6 @@ anova(model5links)
 emmeans(model5links, specs = pairwise ~ charisma_lang_var:start_iat:voting_behaviour)
 
 plot_model(model5links, title = "Predicted Values of RT - Die LINKE", type = "pred", terms = c("charisma_lang_var", "start_iat")) +
-
   ylab ("RT")+
 xlab("Lang. variety mapped with charisma")+
   labs(colour="started IAT with mapping") ->plot_LINKE_lang.varXstart
@@ -1144,7 +1156,9 @@ summarise(n_distinct(bilendi_id))-> overview_voting_other # Frei Wähler top, bu
 ```
 # Outgroup
 ## SES
-```{r glm_outgroup_SES_measures, echo=FALSE}
+*prep & descriptives*
+```{r glm_outgroup_SES_measures1, echo=FALSE}
+
 as.factor(Four_Out$education)-> Four_Out$education
 as.factor(Four_Out$employment_status)-> Four_Out$employment_status
 as.factor(Four_Out$monthly_income)-> Four_Out$monthly_income
@@ -1162,30 +1176,67 @@ summarise(n_distinct(bilendi_id))-> overview_education
 Four_Out%>%
   group_by(monthly_income)%>%
 summarise(n_distinct(bilendi_id))-> overview_monthly_income
-
-# GLMs
-
-# Max. Model
-
+```
+# Outgroup
+## SES
+*max.model*
+simple effects for charisma_lang_varvernacular:education Realschulabschluss, Mittlere Reife, Fachschulreife oder Abschluss der polytechnischen Oberschule 10. Klasse, as well as Azubi/SchülerIn
+```{r glm_outgroup_SES_measures_max, echo=FALSE}
 Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
+Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var , ref = "standard")
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat + 
         #age+ 
         leadership_lang_var + sum_education:charisma_lang_var + employment_status:charisma_lang_var + sum_training:charisma_lang_var  + monthly_income:charisma_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6
-summary (model6) # simple effects for charisma_lang_varvernacular:education Realschulabschluss, Mittlere Reife, Fachschulreife oder Abschluss der polytechnischen Oberschule 10. Klasse, as well as Azubi/SchülerIn
-
+summary (model6) 
 anova(model6)
+```
+# Outgroup
+## SES
+*focus income*
+```{r glm_outgroup_SES_focus_income, echo=FALSE}
 
-# sum_training
+lmer (penal_RTs ~ charisma_lang_var*start_iat*monthly_income  + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6d
+summary (model6d)
+anova(model6d)
+```
+# Outgroup
+## SES
+### Focus education
+```{r glm_outgroup_SES_focus education, echo=FALSE}
+unique(Four_Out$education)
+Four_Out$education = relevel(Four_Out$education , ref = "Abitur bzw. erweiterte Oberschule mit Abschluss 12. Klasse (Hochschulreife)")
 
-unique(Four_Out$sum_training)
-drop_na(Four_Out, sum_training)-> Four_Out
-unique(Four_Out$sum_training)
 
+lmer (penal_RTs ~ charisma_lang_var*start_iat*education + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6c
+summary (model6c)
+anova(model6c)
+
+Four_Out$education = relevel(Four_Out$education , ref = "Hauptschulabschluss, Volksschulabschluss, Abschluss der polytechnischen Oberschule 8. oder 9. Klasse")
+lmer (penal_RTs ~ charisma_lang_var*start_iat*education + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6c
+summary (model6c)
+anova(model6c)
+```
+# Outgroup
+## SES
+### Focus training
+```{r glm_outgroup_SES_focus training, echo=FALSE}
+
+unique (Four_Out$training)
+Four_Out$training = relevel(Four_Out$training , ref = "Hochschulabschluss (Master)")
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat*training + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6e
+summary (model6e)
+anova(model6e)
+```
+# Outgroup
+## SES
+### explore dummy variable sum_training
+```{r glm_outgroup_SES_sum_train_max, echo=FALSE}
 
 Four_Out$sum_training = relevel(Four_Out$sum_training , ref = "high")
 
-lmer (penal_RTs ~ charisma_lang_var*sum_training + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6a
+lmer (penal_RTs ~ charisma_lang_var*start_iat*sum_training + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6a
 summary (model6a)
 anova(model6a)
 
@@ -1194,9 +1245,11 @@ Four_Out$sum_training = relevel(Four_Out$sum_training , ref = "middle")
 lmer (penal_RTs ~ charisma_lang_var*sum_training + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6a
 summary (model6a)
 anova(model6a)
-
-  ## sum_training & gender
-
+```
+# Outgroup
+## SES
+### sum_training & gender
+```{r glm_outgroup_SES_train_gender, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var*sum_training*speaker_gender + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6b
 summary (model6b)
 anova(model6b)
@@ -1204,43 +1257,24 @@ anova(model6b)
 lmer (penal_RTs ~ charisma_lang_var*sum_training*pp_gender + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6b
 summary (model6b)
 anova(model6b)
-
-# overall: education
-
-unique(Four_Out$education)
-Four_Out$education = relevel(Four_Out$education , ref = "Abitur bzw. erweiterte Oberschule mit Abschluss 12. Klasse (Hochschulreife)")
-
-
-lmer (penal_RTs ~ charisma_lang_var*education + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6c
-summary (model6c) # approaching sig. simple effects for middle education: Realschulabschluss, Mittlere Reife, Fachschulreife oder Abschluss der polytechnischen Oberschule 10. Klasse
-anova(model6c)
-
-Four_Out$education = relevel(Four_Out$education , ref = "Hauptschulabschluss, Volksschulabschluss, Abschluss der polytechnischen Oberschule 8. oder 9. Klasse")
-lmer (penal_RTs ~ charisma_lang_var*education + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6c
-summary (model6c)
-
-
-
-
-# overall: monthly_income
-
-lmer (penal_RTs ~ charisma_lang_var*monthly_income + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6d
-summary (model6d)
-anova(model6d)
-
-
-# overall: training
-
-unique (Four_Out$training)
-Four_Out$training = relevel(Four_Out$training , ref = "Hochschulabschluss (Master)")
-
-lmer (penal_RTs ~ charisma_lang_var*training + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6e
-summary (model6e) # approaching sign. simple effect for charisma_lang_varvernacular:trainingKeinen                                                                    -1.869
-anova(model6e)
 ```
 # Outgroup
-## Subset analyses SES
-```{r subset_outgroup_SES_measures, echo=FALSE}
+## SES
+### explore dummy variable sum_education
+```{r glm_outgroup_SES_dum_edu, echo=FALSE}
+
+Four_Out$sum_education = relevel(Four_Out$sum_education, ref = "high")
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat*sum_education + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model7
+summary (model7)
+anova(model7)
+
+
+```
+# Outgroup
+## Subset analyses SES with dummy variables
+*prep*
+```{r subset_SES_prep, echo=FALSE}
 Four_Out%>%
   filter(sum_training == "high")-> Four_Out_high_train
 Four_Out%>%
@@ -1259,13 +1293,14 @@ Four_Out%>%
   filter(sum_education == "low")-> Four_Out_low_edu
 Four_Out%>%
   filter(sum_education == "middle" | sum_education == "low")-> Four_Out_middle_low_edu
+```
+# Outgroup
+## Subset analyses SES
+*focus dummy variable education*
 
-# High training
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_high_train
-summary(model1_high_train)
-anova(model1_high_train)
-emmeans(model1_high_train, specs = pairwise ~ charisma_lang_var:start_iat)
+difference between subset high edu (2nd block sig. difference) & low edu (sig)
+as well as high edu subset (2nd block sig. difference) & middle_low edu (2nd block non-sig. difference)
+```{r subset_SES_glms, echo=FALSE}
 
 # high education
 
@@ -1275,15 +1310,6 @@ anova(model1_high_edu)
 emmeans(model1_high_edu, specs = pairwise ~ charisma_lang_var:start_iat) # vernacular standard-with Charisma) - (standard vernacular-with Charisma) 2nd block sign.
 
 
-# Middle training
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_middle_train
-
-summary(model1_middle_train)
-anova(model1_middle_train) 
-
-emmeans(model1_middle_train, specs = pairwise ~ charisma_lang_var:start_iat)
-
 # Middle education
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_edu,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_middle_edu
@@ -1292,24 +1318,13 @@ anova(model1_middle_edu)
 emmeans(model1_middle_edu, specs = pairwise ~ charisma_lang_var:start_iat)
 
 
-#Low training
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_low_train
-summary(model1_low_train)
-anova(model1_low_train)
-emmeans(model1_low_train, specs = pairwise ~ charisma_lang_var:start_iat)
-
 # Low education
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_edu,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_low_edu
 summary(model1_low_edu)
 anova(model1_low_edu)
-emmeans(model1_low_edu, specs = pairwise ~ charisma_lang_var:start_iat) # vernacular standard-with Charisma) - (standard vernacular-with Charisma) 2nd block sign.
+emmeans(model1_low_edu, specs = pairwise ~ charisma_lang_var:start_iat)
 
-# Middle & Low training
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_low_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_Middle_low_train
-summary(model1_Middle_low_train)
-anova(model1_Middle_low_train)
-emmeans(model1_Middle_low_train, specs = pairwise ~ charisma_lang_var:start_iat)
+
 
 # Middle & Low education
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_low_edu,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_Middle_low_edu
@@ -1332,11 +1347,46 @@ ggsave(here("Output", "Subset_high_edu_lang.varXstart.jpg"))
 
 plot_model_Middle_low_edu
 plot_model_high_edu
-# no difference of 2nd blocks, but in high edu (sig) & low edu (sig)
-# sample size? difference high edu (sig) & middle_low edu (non-sig) => in line with hypothesis?
+```
+# Outgroup
+## Subset analyses SES
+*focus dummy variable training*
+no difference of 2nd blocks
+```{r subset_SES_sum training, echo=FALSE}
+
+# High training
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_high_train
+summary(model1_high_train)
+anova(model1_high_train)
+emmeans(model1_high_train, specs = pairwise ~ charisma_lang_var:start_iat)
+
+
+# Middle training
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_middle_train
+
+summary(model1_middle_train)
+anova(model1_middle_train) 
+
+emmeans(model1_middle_train, specs = pairwise ~ charisma_lang_var:start_iat)
+
+#Low training
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_low_train
+summary(model1_low_train)
+anova(model1_low_train)
+emmeans(model1_low_train, specs = pairwise ~ charisma_lang_var:start_iat)
+
+# Middle & Low training
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_low_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_Middle_low_train
+summary(model1_Middle_low_train)
+anova(model1_Middle_low_train)
+emmeans(model1_Middle_low_train, specs = pairwise ~ charisma_lang_var:start_iat)
 ```
 # Outgroup
 ## MC Social Desirebility SCale
+Interaction charisma_lang_var standard:start_iat standard-with Charisma:score_MCSD sig. and negative => the stronger the socially desirable behaviour the stronger the association of standard & charisma (standard language ideology?)
 ```{r outgroup_MCSDs, echo=FALSE}
 
 as.numeric(scale(Four_Out$score_MCSD))->Four_Out$score_MCSD
@@ -1348,7 +1398,7 @@ Four_In$charisma_lang_var = relevel(Four_In$charisma_lang_var , ref = "standard"
 lmer (penal_RTs ~ charisma_lang_var:start_iat:score_MCSD + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model3_MCSD
 summary(model3_MCSD)
 anova(model3_MCSD) #score_MCSD sign
-emtrends(model3_MCSD, ~ charisma_lang_var | start_iat, var = "score_MCSD") # charisma_lang_varstandard:start_iatstandard-with Charisma:score_MCSD sig. and negative => the stronger the socially desirable behaviour the stronger the association of standard & charisma (standard language ideology?)
+emtrends(model3_MCSD, ~ charisma_lang_var | start_iat, var = "score_MCSD")
 
 
 plot_model(model3_MCSD, title = "Predicted Values of RT - MC Social Desirablility", type = "pred", terms =c("score_MCSD", "charisma_lang_var", "start_iat")) +
@@ -1361,37 +1411,35 @@ ggsave(here("Output", "MCSD_lang.varXstart.jpg"))
 
 ```
 # Ingroup
-
+2nd block diff. Hochdeutsch Dialect-w/oCharisma) - (Dialekt Hochdeutsch-w/oCharisma not sign, 1st block neither
 ```{r glm_age_co RT_ingr ZCorr_Four_In, echo=FALSE}
 
 
-as.numeric(scale(Four_In$penal_RTs)) -> Four_In$penal_RTs
-as.numeric(scale(Four_In$age)) -> Four_In$age
+#as.numeric(scale(Four_In$penal_RTs)) -> Four_In$penal_RTs
+#as.numeric(scale(Four_In$age)) -> Four_In$age
 
 
 Four_In$start_iat = relevel(Four_In$start_iat , ref = "standard-with Charisma")
+Four_In$charisma_lang_var = relevel(Four_In$charisma_lang_var , ref = "standard")
 
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + speaker_gender + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1_in
-summary (model1_in)
-anova(model1_in)
-emmeans(model1_in, specs = pairwise ~ charisma_lang_var:start_iat) # 2nd block diff. not sign
-
-# best fit 
+#lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + speaker_gender + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1_in
+#summary (model1_in)
+#anova(model1_in)
 
 
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age  + (start_iat|bilendi_id) +  (charisma_lang_var|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_best_in
-summary (model_best_in) # no convergence
+#lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age  + (start_iat|bilendi_id) +  (charisma_lang_var|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_best_in
+#summary (model_best_in) # no convergence
 
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age  + (start_iat|bilendi_id) +  (1|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_best_in
-summary (model_best_in)
-anova(model_best_in)
+#lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age  + (start_iat|bilendi_id) +  (1|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_best_in
+#summary (model_best_in)# no convergence
 
-emmeans(model_best_in, specs = pairwise ~ charisma_lang_var:start_iat) # 2nd block diff. Hochdeutsch Dialect-w/oCharisma) - (Dialekt Hochdeutsch-w/oCharisma not sign, 1st block neither (surprise)
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age  + (1|bilendi_id) +  (1|stimulus_ID), data = Four_In,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_in_gr
+summary (model_in_gr)
+emmeans(model_in_gr, specs = pairwise ~ charisma_lang_var:start_iat) 
 
-plot_model(model_best_in, title = "Predicted Values of RT", type = "int") +
+plot_model(model_in_gr, title = "Predicted Values of RT", type = "int") +
   ylab ("RT")+
-    xlab("mapping with Charisma")->plot_int_best2
-plot_int_best2
+    xlab("mapping with Charisma")->plot_in_group_lang.varXstart
+plot_in_group_lang.varXstart
 
-#ggsave(filename = "Plot_Int_Ingr.jpg", plot = plot_int_best2)
 ```
