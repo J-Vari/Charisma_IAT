@@ -25,6 +25,7 @@ library(ggeffects)
 library(readr)
 library(factoextra)
 library(FactoMineR)
+library(here)
 options(scipen=0)
 ```
 # read cleaned data
@@ -100,7 +101,7 @@ FourExpBlock$family_member2_cat.response<- as.factor(FourExpBlock$family_member2
 ```{r plots of Rt DVs, eval=FALSE, include=FALSE}
 
 # plot normal RTs
-ggplot(filtered_FourExpBlock, aes(x=response_time)) +
+ggplot(FourExpBlock, aes(x=response_time)) +
    ggtitle("Plot of raw Response Times") +
            geom_density()-> plot_RT
 
@@ -108,7 +109,7 @@ ggplot(filtered_FourExpBlock, aes(x=response_time)) +
 
 # Plot RTs penalised
 
-ggplot(filtered_FourExpBlock, aes(x=penal_RTs)) +
+ggplot(FourExpBlock, aes(x=penal_RTs)) +
   ggtitle ("Plot of Penalised Reaction Times")+
   xlab("penalised RTs")+
          geom_density()-> plot_RT_penalised
@@ -118,7 +119,7 @@ ggplot(filtered_FourExpBlock, aes(x=penal_RTs)) +
 # Plot age standardised RTs
 
 
-ggplot(filtered_FourExpBlock, aes(x = z_scored_RTS1))+
+ggplot(FourExpBlock, aes(x = z_scored_RTS1))+
   ggtitle("Plot of Age standardised Reaction times")+
   xlab("z_scored_RTs")+
   geom_density()->plot_filtered_FourExpBlock
@@ -133,10 +134,10 @@ plot_filtered_FourExpBlock
 Separate ingroup from outgroup based on exposure to Swabian, outgroup consists of other non-standard, vernacular speakers, standard speakers and bilinguals, see data cleaning file
 
 ```{r in_out_gr, include=FALSE}
-filtered_FourExpBlock%>%
+FourExpBlock%>%
   filter(family_member1_cat.response == "non_st.ingroup" | family_member2_cat.response ==  "non_st.ingroup")-> Four_In
 
-filtered_FourExpBlock%>%
+FourExpBlock%>%
   filter(family_member1_cat.response != "non_st.ingroup" & family_member2_cat.response != "non_st.ingroup" )-> Four_Out
 
 ```
@@ -162,11 +163,11 @@ plot_Four_In_penal_RTs
 # Prep IAT data:
 ## descriptives of data sets
 ```{r descriptives, echo=FALSE}
-n_distinct(filtered_FourExpBlock$bilendi_id)
+n_distinct(FourExpBlock$bilendi_id)
 n_distinct(Four_Out$bilendi_id)
 n_distinct(Four_In$bilendi_id)
 
-filtered_FourExpBlock %>%
+FourExpBlock %>%
 drop_na(age)%>%
   summarise(mean(age), sd (age), min (age), max (age)) -> data_pp_age_result
 data_pp_age_result
@@ -197,7 +198,7 @@ drop_na(age)%>%
   summarise(mean(age), sd (age), min (age), max (age)) -> data_pp_age_In
 data_pp_age_In
 
-filtered_FourExpBlock %>%
+FourExpBlock %>%
   group_by(pp_gender)%>%
   summarise(n_distinct(bilendi_id))-> data_pp_gender
 data_pp_gender
@@ -212,7 +213,7 @@ Four_In %>%
   summarise(n_distinct(bilendi_id))-> data_pp_gender_In
 data_pp_gender_In
 
-filtered_FourExpBlock %>%
+FourExpBlock %>%
    group_by(sum_training)%>%
    summarise(n_distinct(bilendi_id)) -> data_pp_training
 data_pp_training
@@ -226,6 +227,11 @@ Four_Out %>%
    group_by(sum_education)%>%
    summarise(n_distinct(bilendi_id)) -> data_pp_education_Out
 data_pp_education_Out
+
+Four_Out %>%
+   group_by(bundesland)%>%
+   summarise(n_distinct(bilendi_id)) -> data_pp_bundesland_Out
+
 ```
 # correlation matrix of data sets
 ```{r correlations, echo=FALSE}
