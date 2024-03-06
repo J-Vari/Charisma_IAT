@@ -31,7 +31,7 @@ options(scipen=0)
 this is cleaned data including IAT data without pre-selection phase. Cleaning included.:
 - Excluded multiple participation
 - excluded speeders and laggers regarding RTs (Greenwald et al.)
-- excluded participants with more than 10% trials with response_time > 10000) - excluded individual trials longer than 10,000 ms
+- excluded participants with more than 10% trials with response_time < 300) - excluded individual trials longer than 10,000 ms
 - Excluded practice blocks 1,2,5 
 - Treatment of error trial response time: replaced RTs for error trials with participants' mean of correct responses plus 600 ms as penalty.
 
