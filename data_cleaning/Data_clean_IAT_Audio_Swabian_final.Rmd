@@ -26,15 +26,16 @@ data_raw <- read_delim(here("raw_data", "jatos_results_data_17.01.24.csv"), col_
 identify participants who have multiple sessions
 
 ```{r multi part_1, include=FALSE}
+
+data_raw %>%
+  group_by (bilendi_id)%>%
+  summarise (n_distinct (sessionid))-> multi_part 
 ```
 # # Multiple participation
 
 understand source for multi. participation
 
 ```{r multi part_2, include=FALSE}
-data_raw %>%
-  group_by (bilendi_id)%>%
-  summarise (n_distinct (sessionid))-> multi_part 
 
 data_raw %>%
   filter (bilendi_id == "264443801636864" | bilendi_id == "263320741943482" | bilendi_id == "263320741953628" | bilendi_id == "264559562072251" |  bilendi_id == "264560246627553" | bilendi_id == "265003370475767")%>%
