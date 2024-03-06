@@ -1066,6 +1066,8 @@ anova(model5highPop)
 lmer (penal_RTs ~ charisma_lang_var*start_iat*ideology + trialcount  + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5c
 summary (model5c)
 anova(model5c)
+
+
 ```
 ## political background measures
 ### political ideology & gender
@@ -1077,40 +1079,62 @@ anova(model5d)
 ```
 # political background measures
 ## voting behaviour
+Simple effects in contrasts lang. variety level vernacular and Grün vs. LINKE, CDU/CSU vs. LINKE, AfD vs.LINKe approaching significance
+
 ```{r voting_behaviour, echo=FALSE}
-unique(Four_Out$voting_behaviour)
 
 Four_Out$voting_behaviour = relevel(Four_Out$voting_behaviour, ref = "AfD")
 
-lmer (penal_RTs ~ charisma_lang_var*start_iat*voting_behaviour + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5e
-summary (model5e)
+lmer (penal_RTs ~ charisma_lang_var*start_iat*voting_behaviour + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5AfD
+summary (model5AfD)
 
 
 Four_Out$voting_behaviour = relevel(Four_Out$voting_behaviour, ref = "FDP")
-lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5e
-summary (model5e) 
+lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5FDP
+summary (model5FDP) 
 
 Four_Out$voting_behaviour = relevel(Four_Out$voting_behaviour, ref = "GRüNE")
 
-lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5e
-summary (model5e)
+lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5grün
+summary (model5grün)
+
+
 
 Four_Out$voting_behaviour = relevel(Four_Out$voting_behaviour, ref = "CDU/CSU")
-lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5e
-summary (model5e)
+lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5CDU
+summary (model5CDU)
 
 Four_Out$voting_behaviour = relevel(Four_Out$voting_behaviour, ref = "DIE LINKE")
-lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5e
-summary (model5e)
+lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5links
+summary (model5links)
+anova(model5links)
+emmeans(model5links, specs = pairwise ~ charisma_lang_var:start_iat:voting_behaviour)
+
+plot_model(model5links, title = "Predicted Values of RT - Die LINKE", type = "pred", terms = c("charisma_lang_var", "start_iat")) +
+
+  ylab ("RT")+
+xlab("Lang. variety mapped with charisma")+
+  labs(colour="started IAT with mapping") ->plot_LINKE_lang.varXstart
+plot_LINKE_lang.varXstart
+ggsave(here("Output", "plot_LINKE_lang.varXstart.jpg"))
+
+plot_model(model5links, type = "pred", terms = c("charisma_lang_var", "start_iat", "voting_behaviour")) +
+  ggtitle("Predicted Values of RT - ref. die LINKE", subtitle = "Grouped by voting behaviour")+
+  ylab ("RT")+
+xlab("Lang. variety mapped with charisma")+
+  labs(colour="started IAT with mapping") ->plot_pol.behaviour_lang.varXstart
+plot_LINKE_lang.varXstart
+ggsave(here("Output", "plot_pol.behav_lang.varXstart.jpg"))
+
 
 Four_Out$voting_behaviour = relevel(Four_Out$voting_behaviour, ref = "SPD")
-lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5e
-summary (model5e)
+lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5SPD
+summary (model5SPD)
 
 
 Four_Out$voting_behaviour = relevel(Four_Out$voting_behaviour, ref = "Nichtwähler")
-lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5e
-summary (model5e)
+lmer (penal_RTs ~ charisma_lang_var*voting_behaviour*start_iat + trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5nonVot
+summary (model5nonVot)
 
 # voting_other
 
