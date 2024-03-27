@@ -129,7 +129,7 @@ result_preselect %>%
 result_preselect %>%
   distinct(bilendi_id, Pre_select_type, Pre_select_Attribute, Pre_select_Rank)%>%
   group_by(Pre_select_type, Pre_select_Attribute) %>%
-  summarise(mean_Rank = mean (Pre_select_Rank), RanK_standard_deviation = sd(Pre_select_Rank)) %>%
+  summarise(mean_Rank = mean (Pre_select_Rank), median_Rank = median(Pre_select_Rank), RanK_standard_deviation = sd(Pre_select_Rank)) %>%
   arrange(Pre_select_type, desc(RanK_standard_deviation))->consistency_attri
 
 # join tables
