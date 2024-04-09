@@ -555,7 +555,6 @@ summary(model1b)
 # Outgroup
 ## Focus family language
 ```{r glm_outgroup_family.bio, echo=FALSE}
-
 Four_Out$family_member1_cat.response = relevel(Four_Out$family_member1_cat.response , ref = "standard")
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat*family_member1_cat.response + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model2a_fam.Bio
@@ -583,10 +582,15 @@ plot_model(model2b_fam.Bio, title = "Predicted values of reaction times", type =
 plot_fam2.Bio
 
 ggsave(here ("output", "int_fam.Bio2.jpg"))
+```
+## Focus region
+no impact of region/ Bundesland
+```{r glm_outgroup_region, echo=FALSE}
+lmer (penal_RTs ~  charisma_lang_var*start_iat*bundesland + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model_region
+summary(model_region) 
+anova (model_region)
 
 ```
-# Outgroup
-
 ## Focus co-variant age
 explore age related slowing: present in general but not in interaction with study type variable "start_iat" & "charisma_lang_var".
 ```{r glm_outgroup_age, echo=FALSE}
@@ -892,7 +896,7 @@ Four_Out%>%
   distinct(bilendi_id, populism_all)%>%
 ggplot(aes(x=populism_all))+
   ggtitle("Plot of Populism Mean Scores") +
-         geom_bar()+
+         geom_density()+
   ylab("no. of participants")+
   xlab("total score of populism items 1-3")-> Plot_sum_pop1
 Plot_sum_pop1
@@ -905,7 +909,7 @@ as.numeric(Four_Out$populism_dim)-> Four_Out$populism_dim
 populism_dim%>%
    ggplot(aes(x=value))+
      ggtitle("Plot of Populism Dimension") +
-     geom_histogram()+
+     geom_density()+
   xlab ("Populism Prinincipal Component Scores")-> Plot_sum_pop2
 Plot_sum_pop2
 ```
@@ -954,7 +958,7 @@ anova(model5)
 ```
 ## political background measures
 ### focus: populism
-*no impact of neither populism measure, populism_all or populism_dim
+*no impact of populism measure, populism_all, populism_dim
 ```{r poplitical bckgr pop, echo=FALSE}
 # using variable populism_all (mean of 3 pop. measures)
 
@@ -983,10 +987,17 @@ lmer (penal_RTs ~ charisma_lang_var*populism_dim + trialcount + start_iat+ age+ 
 summary (model5a)
 anova(model5a)
 
+# using populism 4 measure (more elitist item compared to populism1-3)
+
+as.numeric(scale(Four_Out$populism4))->Four_Out$populism4
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat*populism4 + trialcount +age+ leadership_lang_var 
+        + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5c
+summary (model5c)
+anova(model5c)
+
 ```
-## political background measures
-### populism
-*subset analysis*
+### populism subset analyes
 difference between 2nd blocks (charisma_lang_var*start_iat), i.e.impact of vernacular when starting with standard-with Charisma vs. impact of standard variety when starting with vernacular-with Charisma) is significant in low populism subset but not significant in high populism subset
 ```{r pop_subset analyses, echo=FALSE}
 
@@ -1024,7 +1035,6 @@ plot_model_pop_low
 
 plot_model_pop_high
 ```
-# political background measures
 ## populism & gender
 *all outgroup data*
 no impact of stimuli speaker/participant gender in complete data set with neither populism measure
@@ -1042,23 +1052,112 @@ summary (model5d_gender)
 anova(model5d_gender)
 
 ```
-# political background measures
-## populism &  gender
-*subset analysis*
-no impact of stimuli speaker/participant gender in different populism subsets (low and high populism) with neither populism measure
-```{r pop_subset analyses gender, echo=FALSE}
-
-
+### subset analysis - low populism
+no impact of gender stimuli speaker in populism subset (low) & populism_all/ populism_dim
+```{r low_pop_subset speaker_gender, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var*populism_all*speaker_gender + start_iat + trialcount + age+ pp_gender
-        + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5lowPop
-summary (model5lowPop)
-anova(model5lowPop)
+        + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5alowPop
+summary (model5alowPop)
+anova(model5alowPop)
 
+lmer (penal_RTs ~ charisma_lang_var*populism_dim*speaker_gender + start_iat + trialcount + age+ pp_gender
+        + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5blowPop
+summary (model5blowPop)
+anova(model5blowPop)
+```
+### subset analysis - low populism
+no impact of participant gender in populism subset (low) & populism_all/ populism_dim
+
+```{r low_pop_subset pp_gender, echo=FALSE}
+
+lmer (penal_RTs ~ charisma_lang_var*populism_all*pp_gender + start_iat + trialcount + age+ 
+     speaker_gender   + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5alowPop
+summary (model5alowPop)
+anova(model5alowPop)
+
+lmer (penal_RTs ~ charisma_lang_var*populism_dim*pp_gender + start_iat + trialcount + age+ 
+     speaker_gender   + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5blowPop
+summary (model5blowPop)
+anova(model5blowPop)
+```
+## populism &  speaker gender
+### subset analysis - high populism
+no impact of gender stimuli speaker in populism subset (high) & populism_all/ populism_dim
+
+```{r high_pop_subset speaker_gender, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var*populism_all*speaker_gender + start_iat + trialcount + age+ pp_gender
         + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5highPop
 summary (model5highPop)
 anova(model5highPop)
 
+
+lmer (penal_RTs ~ charisma_lang_var*populism_dim*speaker_gender + start_iat + trialcount + age+ pp_gender
+        + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5highPop
+summary (model5highPop)
+anova(model5highPop)
+
+```
+## populism &  participant gender
+### subset analysis - high populism
+no impact of participant gender in populism subset (high) & populism_all/ populism_dim
+
+```{r high_pop_subset pp_gender, echo=FALSE}
+lmer (penal_RTs ~ charisma_lang_var*populism_all*pp_gender + start_iat + trialcount + age+ 
+     speaker_gender   + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5highPop
+summary (model5highPop)
+anova(model5highPop)
+
+lmer (penal_RTs ~ charisma_lang_var*populism_dim*pp_gender + start_iat + trialcount + age+ 
+     speaker_gender   + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5highPop
+summary (model5highPop)
+anova(model5highPop)
+```
+## populism & region
+*general analyses* 
+Simple effects: Sachsen as well as Brandenburg  diff. to ref.level (BaWü) in Standard variety & populism scale  
+```{r pop_region, echo=FALSE}
+as.numeric(Four_Out$populism_all)->Four_Out$populism_all
+lmer (penal_RTs ~ charisma_lang_var:populism_all:bundesland + trialcount  + age+ leadership_lang_var + start_iat + (charisma_lang_var|bilendi_id) +  (populism_all|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_reg_pop1
+summary (model_reg_pop1)
+anova(model_reg_pop1)
+
+
+lmer (penal_RTs ~ charisma_lang_var:populism_dim:bundesland + trialcount  + age+ leadership_lang_var + start_iat + (charisma_lang_var|bilendi_id) +  (populism_all|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_reg_pop2
+summary (model_reg_pop2)
+anova(model_reg_pop2)
+
+## Plot
+
+ggpredict(model_reg_pop1, terms = c("populism_all", "charisma_lang_var", "bundesland"), type = "fe") -> model_reg_pred
+model_reg_pred
+
+summary(model_reg_pred)
+  
+model_reg_pred %>% ggplot(aes(x, predicted, color = group, linetype = group)) +
+  geom_smooth() +
+  #geom_errorbar(ymin = model_reg_pred$conf.low, ymax = model_reg_pred$conf.high,
+                #size = 0.4, width = 0.2) +
+  facet_wrap(~facet)+
+  #ylim (2, 2)+
+  ylab("Predicted Values of RT") + 
+  #xlim (2, 2)+ 
+xlab("Populism Score")->
+populism_regio
+populism_regio
+```
+## populism & region
+### subset analyses - low populism
+```{r pop_region_subset, echo=FALSE}
+lmer (penal_RTs ~ charisma_lang_var:bundesland + trialcount  + age+ leadership_lang_var + start_iat + (charisma_lang_var|bilendi_id) +  (populism_all|stimulus_ID), data = Four_Out_low_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_reg_pop_low
+summary (model_reg_pop_low)
+anova(model_reg_pop_low)
+```
+### subset analyses - high populism
+simple effect for Brandenburg standard compared to ref.level (BaWü) and Brandenburg compared standard vs. vernacular (positive slope)-> participants slower in trials with vernacular & charisma compared to Standard in Brandenburg
+```{r pop_region_subset, echo=FALSE}
+lmer (penal_RTs ~ charisma_lang_var:bundesland + trialcount  + age+ leadership_lang_var + start_iat + (charisma_lang_var|bilendi_id) +  (populism_all|stimulus_ID), data = Four_Out_high_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_reg_pop_high
+summary (model_reg_pop_high)
+anova(model_reg_pop_high)
 ```
 ## political background measures
 ### political ideology
@@ -1156,7 +1255,7 @@ summarise(n_distinct(bilendi_id))-> overview_voting_other # Frei Wähler top, bu
 ```
 # Outgroup
 ## SES
-*prep & descriptives*
+### prep & descriptives
 ```{r glm_outgroup_SES_measures1, echo=FALSE}
 
 as.factor(Four_Out$education)-> Four_Out$education
@@ -1177,9 +1276,7 @@ Four_Out%>%
   group_by(monthly_income)%>%
 summarise(n_distinct(bilendi_id))-> overview_monthly_income
 ```
-# Outgroup
-## SES
-*max.model*
+### all SES measures max.model
 simple effects for charisma_lang_varvernacular:education Realschulabschluss, Mittlere Reife, Fachschulreife oder Abschluss der polytechnischen Oberschule 10. Klasse, as well as Azubi/SchülerIn
 ```{r glm_outgroup_SES_measures_max, echo=FALSE}
 Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
@@ -1191,17 +1288,13 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat +
 summary (model6) 
 anova(model6)
 ```
-# Outgroup
-## SES
-*focus income*
+### Focus income
 ```{r glm_outgroup_SES_focus_income, echo=FALSE}
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat*monthly_income  + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6d
 summary (model6d)
 anova(model6d)
 ```
-# Outgroup
-## SES
 ### Focus education
 ```{r glm_outgroup_SES_focus education, echo=FALSE}
 unique(Four_Out$education)
@@ -1217,8 +1310,6 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat*education + trialcount + stim_cat 
 summary (model6c)
 anova(model6c)
 ```
-# Outgroup
-## SES
 ### Focus training
 ```{r glm_outgroup_SES_focus training, echo=FALSE}
 
@@ -1229,9 +1320,7 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat*training + trialcount + stim_cat +
 summary (model6e)
 anova(model6e)
 ```
-# Outgroup
-## SES
-### explore dummy variable sum_training
+### dummy variable sum_training
 ```{r glm_outgroup_SES_sum_train_max, echo=FALSE}
 
 Four_Out$sum_training = relevel(Four_Out$sum_training , ref = "high")
@@ -1246,8 +1335,6 @@ lmer (penal_RTs ~ charisma_lang_var*sum_training + trialcount + stim_cat + age+ 
 summary (model6a)
 anova(model6a)
 ```
-# Outgroup
-## SES
 ### sum_training & gender
 ```{r glm_outgroup_SES_train_gender, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var*sum_training*speaker_gender + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6b
@@ -1258,9 +1345,7 @@ lmer (penal_RTs ~ charisma_lang_var*sum_training*pp_gender + trialcount + stim_c
 summary (model6b)
 anova(model6b)
 ```
-# Outgroup
-## SES
-### explore dummy variable sum_education
+### dummy variable sum_education
 ```{r glm_outgroup_SES_dum_edu, echo=FALSE}
 
 Four_Out$sum_education = relevel(Four_Out$sum_education, ref = "high")
@@ -1271,9 +1356,8 @@ anova(model7)
 
 
 ```
-# Outgroup
-## Subset analyses SES with dummy variables
-*prep*
+### Subset analyses SES with dummy variables
+#### prep
 ```{r subset_SES_prep, echo=FALSE}
 Four_Out%>%
   filter(sum_training == "high")-> Four_Out_high_train
@@ -1294,14 +1378,12 @@ Four_Out%>%
 Four_Out%>%
   filter(sum_education == "middle" | sum_education == "low")-> Four_Out_middle_low_edu
 ```
-# Outgroup
-## Subset analyses SES
-*focus dummy variable education*
+### Subset analyses SES
+#### focus dummy variable education
 
 difference between subset high edu (2nd block sig. difference) & low edu (sig)
-as well as high edu subset (2nd block sig. difference) & middle_low edu (2nd block non-sig. difference)
+as well as high edu subset (2nd block sig. difference) & middle + low edu (2nd block non-sig. difference)
 ```{r subset_SES_glms, echo=FALSE}
-
 # high education
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_edu,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_high_edu
@@ -1348,12 +1430,68 @@ ggsave(here("Output", "Subset_high_edu_lang.varXstart.jpg"))
 plot_model_Middle_low_edu
 plot_model_high_edu
 ```
-# Outgroup
-## Subset analyses SES
-*focus dummy variable training*
+## SES & populism
+Impact of language variety in high education subset might be due to correlation of education with populism.
+-> sum_education/ sum_training positive slopes: the lower educated the higher populism scores, biggest difference between high and middle educated
+-> income less clear pattern
+
+```{r SES_pop, echo=FALSE}
+levels(Four_Out$employment_status)
+levels(Four_Out$monthly_income) 
+
+Four_Out$employment_status = relevel(Four_Out$employment_status, ref = "Vollzeit berufstätig (mehr als 30 Stunden/Woche)")
+
+Four_Out$monthly_income = relevel(Four_Out$monthly_income, ref = "unter 500 Euro")
+
+lm (populism_all ~ sum_education + sum_training + employment_status + monthly_income, data = Four_Out) -> model_pop_SES
+
+summary (model_pop_SES)
+anova(model_pop_SES)
+
+
+ggpredict(model_pop_SES, terms = "sum_education", type = "fe")->predicted_pop_edu
+ggpredict(model_pop_SES, terms = "sum_training", type = "fe")->predicted_pop_training
+ggpredict(model_pop_SES, terms = "monthly_income", type = "fe")->predicted_pop_income
+
+# plot education
+predicted_pop_edu%>%ggplot(aes(x, predicted)) +
+  geom_point() +
+  geom_errorbar(ymin = predicted_pop_edu$conf.low, ymax = predicted_pop_edu$conf.high,
+                size = 0.4, width = 0.2)+
+  xlab("education")+
+  ylab("populism score")->plot_pop_edu
+
+
+# plot training
+predicted_pop_training%>%ggplot(aes(x, predicted)) +
+  geom_point() +
+  geom_errorbar(ymin = predicted_pop_training$conf.low, ymax = predicted_pop_training$conf.high,
+                size = 0.4, width = 0.2)+
+  xlab("training")+
+  ylab("populism score")->plot_pop_training
+
+# plot income
+
+predicted_pop_income%>%ggplot(aes(x, predicted), dodge =0.9) +
+  geom_point() +
+  geom_errorbar(ymin = predicted_pop_income$conf.low, ymax = predicted_pop_income$conf.high,
+                size = 0.4, width = 0.2)+
+  xlab("monthly income")+
+  ylab("populism score")+
+  theme(axis.text.x = element_text(angle = 25, hjust = 1))->plot_pop_income
+
+
+
+plot_pop_edu
+plot_pop_training
+plot_pop_income
+
+
+```
+### Subset analyses SES
+#### focus dummy variable training
 no difference of 2nd blocks
 ```{r subset_SES_sum training, echo=FALSE}
-
 # High training
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_high_train
