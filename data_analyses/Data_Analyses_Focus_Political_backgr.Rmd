@@ -3,6 +3,7 @@ title: "IAT_analyses - Focus political background measures"
 author: "Judit Vari"
 date: "21 2 2024"
 output: html_document
+toc: yes
 ---
 This is an extract of "All_data_analyses_IAT_Audio_Swabian" focusing only on the political background measures. Generated plots are not saved in output. 
 ```{r libraries, include=FALSE}
@@ -38,7 +39,7 @@ this is cleaned data including IAT data without pre-selection phase. Cleaning in
 
 For previous steps and further analyses see Markdown files: Data_clean_Audio_Swabian_Final & Data_Analyses_IAT_Audio_Swabian
 for explanation of variables see "Logger Notes Final.docx" on server
-```{r read, echo=TRUE}
+```{r read, include=FALSE}
 FourExpBlock <- read_delim(here("data_processed","IAT_clean.csv"), col_names = TRUE, delim = ",")
 ```
 # assign classes for data
@@ -98,7 +99,7 @@ FourExpBlock$family_member2_cat.response<- as.factor(FourExpBlock$family_member2
 
 *plots of DVs: response time (RTs) & penalised response time (error trials) & age related RTs*
 
-```{r plots of Rt DVs, eval=FALSE, include=FALSE}
+```{r plots of Rt DVs, echo=FALSE}
 
 # plot normal RTs
 ggplot(FourExpBlock, aes(x=response_time)) +
@@ -119,14 +120,14 @@ ggplot(FourExpBlock, aes(x=penal_RTs)) +
 # Plot age standardised RTs
 
 
-ggplot(FourExpBlock, aes(x = z_scored_RTS1))+
-  ggtitle("Plot of Age standardised Reaction times")+
-  xlab("z_scored_RTs")+
-  geom_density()->plot_filtered_FourExpBlock
+#ggplot(FourExpBlock, aes(x = z_scored_RTS1))+
+ # ggtitle("Plot of Age standardised Reaction times")+
+ #xlab("z_scored_RTs")+
+ #geom_density()->plot_filtered_FourExpBlock
 
 plot_RT_penalised
 plot_RT
-plot_filtered_FourExpBlock
+#plot_filtered_FourExpBlock
 
 ```
 # Prep IAT data:
@@ -145,7 +146,7 @@ FourExpBlock%>%
 
 ## separate in- and outgropup
 ### plots
-```{r in_out_gr_plots, include=FALSE}
+```{r in_out_gr_plots, echo=FALSE}
 
 ggplot(Four_Out, aes(x = penal_RTs))+
   ggtitle("Penalised Reaction Times in Outgroup")+
@@ -302,7 +303,6 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lan
 summary(model1b)
 
 ```
-
 # Outgroup 
 ## descriptives of political background measures 
 *voting behaviour & ideology & populism*
@@ -353,7 +353,7 @@ drop_na (populism4)->Four_Out
 Four_Out%>%
   ungroup()%>%
   summarise(mean(populism1), sd(populism1), min(populism1), max (populism1), mean(populism2), sd(populism2), min(populism2), max (populism2),  mean(populism3), sd(populism3), min(populism3), max (populism3),mean(populism4), sd(populism4), min(populism4), max (populism4))-> Four_Out_sum_populism
-
+Four_Out_sum_populism
 ```
 # Outgroup
 ## Populism & PCA
@@ -398,7 +398,6 @@ p_1a
 ## Populism & PCA
 
 *new dimension reduction variable for populism after PCA*
-
 ```{r PCA_outgroup_populism2, echo=FALSE}
 
 
@@ -415,7 +414,6 @@ rename (Four_Out, populism_dim = value)-> Four_Out
 # Outgroup
 ## prep populism
 create 2 dummy variables for populism a) mean of populism scores items 1-3, but exclude pop 4 -> PCA shows very different b) use principal component 1 as dummy
-
 ```{r poplitical bckgr prep, echo=FALSE}
 Four_Out %>%
   mutate(populism_all = rowMeans(across(c(populism1, populism2, populism3), as.numeric, .names = "mean_{col}"), na.rm = TRUE)) -> Four_Out
@@ -444,7 +442,7 @@ Plot_sum_pop2
 # Outgroup
 ## prep all political background measures 
 scale political bckgr variables
-```{r poplitical bckgr prep2, echo=FALSE}
+```{r poplitical bckgr prep2, include=FALSE}
 as.numeric(scale(Four_Out$ideology))-> Four_Out$ideology
 as.numeric(scale(Four_Out$populism1))-> Four_Out$populism1
 as.numeric(scale(Four_Out$populism2))-> Four_Out$populism2
@@ -454,7 +452,7 @@ as.numeric(scale (Four_Out$populism4))-> Four_Out$populism4
 # Outgroup
 ## prep populism
 * create populism subsets*
-```{r poplitical bckgr prep3, echo=FALSE}
+```{r poplitical bckgr prep3, include=FALSE}
 Four_Out%>%
   ungroup()%>%
   summarise (sum(is.na(populism_all)))-> NA_no
@@ -514,7 +512,6 @@ lmer (penal_RTs ~ charisma_lang_var*populism_dim + trialcount + start_iat+ age+ 
         + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5a
 summary (model5a)
 anova(model5a)
-
 ```
 ## political background measures
 ### populism
@@ -570,7 +567,6 @@ lmer (penal_RTs ~ charisma_lang_var*populism_dim *speaker_gender + start_iat + t
         + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5d_gender
 summary (model5d_gender)
 anova(model5d_gender)
-
 ```
 # political background measures
 ## populism &  gender
@@ -608,9 +604,6 @@ plot_model(model5c, type = "pred", terms = c("ideology", "charisma_lang_var",  "
   labs ( title = "Predicted values of RT", subtitle = "grouped by started IAT with mapping")->plot_ideol_lang.varXstart
   
 plot_ideol_lang.varXstart
-
-
-
 ```
 ## political background measures
 ### political ideology & gender

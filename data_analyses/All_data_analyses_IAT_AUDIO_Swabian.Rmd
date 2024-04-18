@@ -5,10 +5,10 @@ date: "20 2 2024"
 output:
   html_document:
     toc: yes
-    toc_float: yes
-  pdf_document:
-    toc: yes
 ---
+# 1. Prep
+## 1.1. session & all data
+*load libraries*
 ```{r prep_library, include=FALSE}
 library (dplyr)
 library(broom)
@@ -32,13 +32,13 @@ library(FactoMineR)
 library(here)
 #options(scipen=999)
 ```
-# read cleaned data
+*read cleaned data*
 ```{r read data, include=FALSE}
 result <- read_delim(here("data_processed", "result_clean.csv"), col_names = TRUE, delim = ",")
 
 result_preselect <- read_delim(here("data_processed", "result_preselect_clean.csv"), col_names = TRUE, delim = ",")
 ```
-# assign classes for data
+*assign classes*
 ```{r assign classes, include=FALSE}
 result$ideology <- as.numeric(result$ideology)
 result$populism1 <- as.numeric(result$populism1)
@@ -90,14 +90,13 @@ result$sum_education<- as.factor(result$sum_education)
 result$family_member1_cat.response<- as.factor(result$family_member1_cat.response)
 result$family_member2_cat.response<- as.factor(result$family_member2_cat.response)
 ```
-# descriptives of Pre-selection phase
-
+## 1.2. Pre-selection of leadership attributes
+*separate pre-selection phase data from IAT data*
 Part of separate cleaned data set only with attributes:
 variable "cat1_: leadership1" = „mit Charisma“
 variable "cat2_: leadership2" = „ohne Charisma“
 variables "cat1/2_list": Logging of final selection for leadership attributes of leadership category 1. Each attribute with associated rank
 first 6 of variables "cat1/2_list" used for IAT.
-
 
 Part of main cleaned data set containing meta data of selection process such as following 4 variables:
 variable "count_ click_sequence": Count of sequences (1 sequence = 2 clicks:  1x selection of attribute +  1x allocation to place) min. 20 
@@ -111,100 +110,25 @@ result%>%
   select(bilendi_id, count_check_selection, count_click_sequence, accuracy_practice_trial, n_practice)%>%
   distinct()->data_pre
 ```
-
-# descriptives Pre-selection
-Which attributes most often among top 6 for each leadership group?
-How consistent is participants' ranking?
-
-```{r preselection2, echo=FALSE}
-# Top 6
-result_preselect %>%
-  group_by(Pre_select_type, Pre_select_Attribute) %>%
-  summarise(rank_counts = sum(Pre_select_Rank <= 6)) %>%
-  ungroup() %>%
-  arrange(Pre_select_type, desc(rank_counts))->sum_attri_table
-
-# consistency
-
-result_preselect %>%
-  distinct(bilendi_id, Pre_select_type, Pre_select_Attribute, Pre_select_Rank)%>%
-  group_by(Pre_select_type, Pre_select_Attribute) %>%
-  summarise(mean_Rank = mean (Pre_select_Rank), median_Rank = median(Pre_select_Rank), RanK_standard_deviation = sd(Pre_select_Rank)) %>%
-  arrange(Pre_select_type, desc(RanK_standard_deviation))->consistency_attri
-
-# join tables
-
-left_join(sum_attri_table,consistency_attri, by= c("Pre_select_type", "Pre_select_Attribute")) -> pre_select_attri
-
-pre_select_attri
-
-# Output summary table as csv
-
-write_delim(pre_select_attri, here::here("output", "pre_select_attri.csv"), col_names = TRUE, delim = ",")
-
-```
-# descriptives Pre-selection
-
-*average clicks made for selection & average check of allocation*
-variable "count_ click_sequence": Count of sequences (1 sequence = 2 clicks:  1x selection of attribute +  1x allocation to place) min. 20 
-variable "count_ check_selection": Count of calling check-up screen to revise pre-selection (Screen with „Überprüfen Sie Ihre Auswahl…“), value min. 1
-```{r preslection3, echo=FALSE}
-
-data_pre%>%
-  distinct(bilendi_id, count_click_sequence, count_check_selection)%>%
-  summarise(mean_clicks = mean (count_click_sequence), sd_click = sd (count_click_sequence), mean_check = mean (count_check_selection), sd_check = sd (count_check_selection))-> flow_pre_select
-
-flow_pre_select
-```
-# descriptives Pre-selection
-
-## average no. of practice trials after selection of attributes & average accuracy in last pracrtice trials
-variable "n_practice": Count of block no. of pre-selection practice (min: 0-3, max. 7)
-variable "accuracy_practice_trial": Accuracy of block no. (max. 1 = 100%)
-
-```{r preselection4, echo=FALSE}
-
-
-data_pre%>%
-  distinct(bilendi_id, n_practice, accuracy_practice_trial)%>%
-  summarise(mean_n_practice = mean (n_practice), sd_practice = sd (n_practice), mean_acc_pract_overall = mean (accuracy_practice_trial), sd_acc_pract_overall = sd (accuracy_practice_trial))-> flow_pre_practice
-
-flow_pre_practice
-
-data_pre %>%
-  group_by(bilendi_id) %>%
-  summarise(
-    highest_block = max(n_practice),
-    mean_accuracy_highest_block = mean(accuracy_practice_trial[n_practice == max(n_practice)])) %>%
-  summarise(
-    mean_accuracy_across_all = mean(mean_accuracy_highest_block), sd_accuracy_across_all = sd(mean_accuracy_highest_block))-> sum_acc_practice
-
-sum_acc_practice
-```
-# Prep IAT data: 
-
-### create data set with only IAT data
-```{r prep_speed_lag1, echo=FALSE}
+## 1.2. exclude practice blocks & filter speeders/ laggers
+*create data set with only IAT data*
+```{r prep_only_IAT_data, echo=FALSE}
 
 result%>%
   filter(moment== "IAT")-> result
-
 ```
-# Prep IAT data: 
-
-### include only four experimental blocks (3,4,6,7)
-```{r prep_speed_lag2, echo=FALSE}
+*include only four experimental blocks*
+exclude practice blocks 1, 2 and 5 (after key switch) and include only experimental blocks 3,4,6,7 following Greenwld et al.
+```{r prep_exp_blocks, echo=FALSE}
 
 result%>%
   filter (blockno == 3 | blockno == 4  | blockno == 6 |blockno == 7)-> FourExpBlock
 ```
-# Prep IAT data:
-
-### exclude speeders & laggers
+*exclude speeders & laggers*
 exclude speeders: Greenwald et al: exclusion of entire data from subjects for whom more than 10% of trials have latencies faster than 300 ms
 Experimental block 3 has 20 trial, block 4 has 40 trials, block 6 has 20 trials, block 7 has 40 trials
 FourExpBlock = 120 trials 10% =  12, find pp whose RT is <300 ms for more than 12 trials
-```{r prep_speed_lag3, echo=FALSE}
+```{r prep_check_speed_lag, echo=FALSE}
 
 FourExpBlock%>%
   group_by (bilendi_id)%>%
@@ -216,13 +140,11 @@ FourExpBlock %>%
   summarize(rows_below_300 = sum(response_time < 300), mean(accuracy))-> FourBlock_pp_below_300 # 121 pp speeders!
 
 ```
-# Prep IAT data:
-
-## understand speeders
+*understand speeders*
 examine two participants/ speeders
 one_speeder1: 78 rows under 300, but acc 66 %
 one_speeder2: 34 rows under 300 but acc. 60.525 -> speeder only in last experimental block
-```{r prep_speed_lag4, echo=FALSE}
+```{r prep_understand_speed_lag, echo=FALSE}
 
 FourExpBlock%>%
   filter(bilendi_id== "264559562084358")%>%
@@ -234,12 +156,10 @@ FourExpBlock%>%
   select(bilendi_id, sessionid, moment, blockno, trialcount, stimulus_ID, response_time, correct, age, pp_gender, meta_system_os )-> one_speeder2 
 
 ```
-# Prep IAT data:
-## exclude speeders laggers
+*exclude speeders & laggers*
 decision:  Exclude participants with more than 10% fast (<300ms) trials & Exclude individual trials longer than 10,000 ms
 do not exclude only specific experimental block (such as one_speeder2) or speeders with specific accuracy, rather follow Greenwald et al
-```{r prep_speed_lag5, echo=FALSE}
-
+```{r prep_exclude_speed_lagg, echo=FALSE}
 FourExpBlock %>%
   group_by(bilendi_id) %>%
   filter(
@@ -248,9 +168,17 @@ FourExpBlock %>%
   ) %>%
   ungroup()-> filtered_FourExpBlock
 ```
-# Prep IAT data:
-
-## treatment of incorrect trials
+## 1.3. Descriptives IAT cleaning  
+*How many participants excluded for speeders & laggers?*
+Original no. participants
+```{r prep_no._excl._speed_lag_original, echo=FALSE}
+n_distinct(FourExpBlock$bilendi_id)
+```
+Cleaned data no. participants
+```{r prep_no._excl._speed_lag_cleaned, echo=FALSE}
+n_distinct(filtered_FourExpBlock$bilendi_id)
+```
+## 1.4. Treatment of incorrect trials
 
 replaced Reaction times for error trials with: mean of correct responses plus 600 ms as penalty 
 (other option in literature: the mean of correct responses in the block in which the error occurred plus a penalty of 2x the standard deviation of correct responses in the block in which the error occurred.)
@@ -263,33 +191,12 @@ filtered_FourExpBlock %>%
   mutate(penal_RTs = ifelse(correct == 0, mean_RT_corr_block + 600, response_time)) -> filtered_FourExpBlock
 
 ```
-
-# Prep IAT data:
-
-## write clean IAT data to csv
+*write clean IAT data to csv*
 ```{r write clean IAT file, echo=FALSE}
-
 write_delim(filtered_FourExpBlock, here::here("data_processed", "IAT_clean.csv"), col_names = T, delim = ",")
-
 ```
-# Prep IAT data:
-
-### descriptives IAT processing
-how many trials excluded for speeders & laggers
-
-
-how many stimuli presented to participants? -> 303! we had: lang. var stimuli: 6 speaker x 2 varieties  x 6 stimuli = 72 different stimuli PLUS leadership stimuli: 6 speakers x 2 varieties x 2 leadership cat x 6 stimuli = 144 different stimuli = 216, but since we had individual pre-selection, individuals vary what they picked as stimuli for leadership since not all participants picked the same 6 stimuli for leadership stimuli (see analyses of attributes) -> additional variation
-
-```{r descriptives IAT processing, echo=FALSE}
-
-n_distinct(FourExpBlock$bilendi_id)
-n_distinct(filtered_FourExpBlock$bilendi_id)
-n_distinct(FourExpBlock$stimulus_ID) 
-```
-# Standardise for age related slowing
-
-
-## ## z-scores to address age-related slowing with data transformation (and not only age as co-variant )
+##1.5. Age related slowing  
+*z-scores to address age-related slowing with data transformation (and not only age as co-variant)*
 
 Hummert: Using the Implicit Association Test to Measure Age Differences in Implicit Social Cognitions
 Faust, M. E., Balota, D. A., Spieler, D. H., & Ferraro, F. R. (1999).
@@ -309,13 +216,11 @@ computed each participant’s mean and standard deviation across all trials all 
 filtered_FourExpBlock%>%
   group_by (bilendi_id)%>%
   mutate (z_scored_RTS1 = ((penal_RTs - mean(penal_RTs))/ sd(penal_RTs))) -> filtered_FourExpBlock
-  
 ```
-# Prep IAT data:
+*Plots of IAT DVs*  
+plots of DVs: response time (RTs) & penalised response time (error trials) & age related RTs*
 
-*plots of DVs: response time (RTs) & penalised response time (error trials) & age related RTs*
-
-```{r plots of Rt DVs, eval=FALSE, include=FALSE}
+```{r plots of RT DVs, eval=FALSE, include=FALSE}
 
 # plot normal RTs
 ggplot(filtered_FourExpBlock, aes(x=response_time)) +
@@ -346,10 +251,9 @@ plot_RT
 plot_filtered_FourExpBlock
 
 ```
-# Prep IAT data:
-## separate in- and outgropup
-Separate ingroup from outgroup based on exposure to Swabian, outgroup consists of other non-standard, vernacular speakers, standard speakers and bilinguals, see data cleaning file
-
+## 1.6. Create in- and outgroup subsets  
+Separate ingroup from outgroup based on exposure to Swabian, outgroup consists of other non-standard, vernacular speakers, standard speakers and bilinguals, see data cleaning file. 
+Continue with analyses of outgroup data set
 ```{r in_out_gr, include=FALSE}
 filtered_FourExpBlock%>%
   filter(family_member1_cat.response == "non_st.ingroup" | family_member2_cat.response ==  "non_st.ingroup")-> Four_In
@@ -358,12 +262,8 @@ filtered_FourExpBlock%>%
   filter(family_member1_cat.response != "non_st.ingroup" & family_member2_cat.response != "non_st.ingroup" )-> Four_Out
 
 ```
-# Prep IAT data:
-
-## separate in- and outgropup
-### plots
-```{r in_out_gr_plots, include=FALSE}
-
+*plots of in- and outgroup DVs*
+```{r plots_in_out_gr_, include=FALSE}
 ggplot(Four_Out, aes(x = penal_RTs))+
   ggtitle("Penalised Reaction Times in Outgroup")+
   geom_density()+ 
@@ -377,460 +277,11 @@ ggplot(Four_In, aes(x = penal_RTs))+
 plot_Four_Out_penal_RTs
 plot_Four_In_penal_RTs
 ```
-# Prep IAT data:
-## descriptives of data sets
-```{r descriptives, echo=FALSE}
-n_distinct(filtered_FourExpBlock$bilendi_id)
-n_distinct(Four_Out$bilendi_id)
-n_distinct(Four_In$bilendi_id)
-
-filtered_FourExpBlock %>%
-drop_na(age)%>%
-  summarise(mean(age), sd (age), min (age), max (age)) -> data_pp_age_result
-data_pp_age_result
-
-Four_Out %>%
-drop_na(age)%>%
-  summarise(mean(age), sd (age), min (age), max (age)) -> data_pp_age_Out
-
-Four_Out %>%
-  group_by(family_member1_cat.response) %>%
-  summarise(count = n_distinct(bilendi_id)) %>%
-  arrange(count) -> data_pp_fam.bio1_out
-
-data_pp_fam.bio1_out
-
-
-Four_Out%>%group_by(family_member2_cat.response)%>%
-  summarise(count = n_distinct(bilendi_id))%>% arrange(count)->data_pp_fam.bio2_out
-
-bind_cols(data_pp_fam.bio1_out, data_pp_fam.bio2_out)-> data_pp_fam.bio_out
-  
-
-data_pp_age_Out
-#write.table(data_pp_age_Out, "data_pp_age_Out.csv")
-
-Four_In %>%
-drop_na(age)%>%
-  summarise(mean(age), sd (age), min (age), max (age)) -> data_pp_age_In
-data_pp_age_In
-
-filtered_FourExpBlock %>%
-  group_by(pp_gender)%>%
-  summarise(n_distinct(bilendi_id))-> data_pp_gender
-data_pp_gender
-
-Four_Out %>%
-  group_by(pp_gender)%>%
-  summarise(n_distinct(bilendi_id))-> data_pp_gender_Out
-data_pp_gender_Out
-
-Four_In %>%
-  group_by(pp_gender)%>%
-  summarise(n_distinct(bilendi_id))-> data_pp_gender_In
-data_pp_gender_In
-
-filtered_FourExpBlock %>%
-   group_by(sum_training)%>%
-   summarise(n_distinct(bilendi_id)) -> data_pp_training
-data_pp_training
-
-Four_Out %>%
-   group_by(sum_training)%>%
-   summarise(n_distinct(bilendi_id)) -> data_pp_training_Out
-data_pp_training_Out
-
-Four_Out %>%
-   group_by(sum_education)%>%
-   summarise(n_distinct(bilendi_id)) -> data_pp_education_Out
-data_pp_education_Out
-```
-# correlation matrix of data sets
-```{r correlations, echo=FALSE}
-as.numeric(Four_Out$age)->Four_Out$age
-as.numeric(Four_Out$ideology)->Four_Out$ideology
-as.numeric(Four_Out$populism1)->Four_Out$populism1
-as.numeric(Four_Out$populism2)->Four_Out$populism2
-as.numeric(Four_Out$populism3)->Four_Out$populism3
-as.numeric(Four_Out$populism4)->Four_Out$populism4
-
-drop_na(Four_Out, age)->Four_Out
-drop_na(Four_Out, ideology)->Four_Out
-drop_na(Four_Out, populism1)->Four_Out
-drop_na(Four_Out, populism2)->Four_Out
-drop_na(Four_Out, populism3)->Four_Out
-drop_na(Four_Out, populism4)->Four_Out
-
-
-Four_Out%>%
-  ungroup()%>%
-  select(penal_RTs, age, ideology, populism1, populism2, populism3, populism4)-> bckgr_poli
-
-cor(bckgr_poli)->matrix_bckgr_poli
-
-matrix_bckgr_poli
-# Visualize correlations
-
-
-ggcorrplot(matrix_bckgr_poli, 
-           title = "Background variables", hc.order = TRUE, 
-           type = "lower",lab = TRUE, lab_size = 2.5,  insig = "blank")->plot_corr_matrix
-plot_corr_matrix
-
-ggsave(here ("output", "plot_corr_matrix.jpg"))
-```
-
-Two options to address age related slowing in model: 1) use z-scored RTs as DV 2) use age as co-variant
-
-# Option 1: GLMS Outgroup with age standardised RTs DV
-
-But: all models are singular fits. Why? different scalings?
-
-```{r glm_age_st_RTs, eval=FALSE, include=FALSE}
-
-Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
-Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "standard")
-
-# lmer (z_scored_RTS1 ~ charisma_lang_var*start_iat + trialcount + stim_cat +(charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence
-
-lmer (z_scored_RTS1 ~ charisma_lang_var*start_iat + trialcount + stim_cat +(1|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence
-
-allFit(model1a) 
-summary (model1a)
-anova(model1a)
-```
-# Option 2: GLMS Outgroup with RTs as DV
-## age as covariant
-```{r glm_outgroup, echo=FALSE}
-as.numeric(scale(Four_Out$penal_RTs)) -> Four_Out$penal_RTs
-as.numeric(scale(Four_Out$age)) -> Four_Out$age
-
-Four_Out%>%
-  drop_na(pp_gender)->Four_Out
-
-
-# plot response_time
-
-ggplot(Four_Out, aes(x=penal_RTs)) +
-  ggtitle("Penalised Reaction Times in Outgroup")+
-  xlab("Reaction Times")+
-         geom_density()-> plot_RT_Four
-
-plot_RT_Four # 
-
-# Max. Model regarding experimental variables
-
-
-Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
-Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "standard")
-
-#lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat + age +(charisma_lang_var:start_iat|bilendi_id) +  (charisma_lang_var|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence -> simplify RE - structure
-
-#lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat + age +(charisma_lang_var|bilendi_id) +  (charisma_lang_var:start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence  -> simplify RE - structure
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat + age +(charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a
-summary (model1a)
-anova(model1a)
-
-emmeans(model1a, specs = pairwise ~ charisma_lang_var:start_iat) # 2nd block (standard vernacular-with Charisma - vernacular standard-with Charisma) sign different
-
-plot_model(model1a, title = "Predicted values of reaction times", type = "pred", terms = c("charisma_lang_var", "start_iat")) +
-  ylab ("reaction times")+
-    xlab("lang. variety mapped with charisma")+
-  labs(colour= str_wrap("Mapping of IAT start", width = 15))->plot_model1a
-plot_model1a
-
-ggsave(here ("output", "int_lang.variety_start_iat.jpg"))
-
-
-#### change reference level
-
-Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "vernacular-with Charisma")
-Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "vernacular")
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var  + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1b
-summary(model1b)
-
-```
-# Outgroup
-## Focus family language
-```{r glm_outgroup_family.bio, echo=FALSE}
-Four_Out$family_member1_cat.response = relevel(Four_Out$family_member1_cat.response , ref = "standard")
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat*family_member1_cat.response + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model2a_fam.Bio
-summary(model2a_fam.Bio)
-anova(model2a_fam.Bio)
-
-Four_Out$family_member2_cat.response = relevel(Four_Out$family_member2_cat.response , ref = "standard")
-
-lmer (penal_RTs ~  charisma_lang_var*start_iat*family_member2_cat.response + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model2b_fam.Bio
-summary(model2b_fam.Bio) 
-anova (model2b_fam.Bio)
-
-
-plot_model(model2a_fam.Bio, title = "Predicted Values of RT", type = "pred", terms =  c("charisma_lang_var", "start_iat", "family_member1_cat.response"), dodge =0.9) +
-   theme(plot.margin = margin(0.5, .5, .5, .5, "cm")) +    theme(axis.text.x = element_text(angle = 15, hjust = 1))+
-  ylab ("RT")+
-  xlab("lang. variety mapped with charisma") ->plot_fam1.Bio
-plot_fam1.Bio
-ggsave(here ("output", "int_fam.Bio1.jpg"))
-
-plot_model(model2b_fam.Bio, title = "Predicted values of reaction times", type = "pred", terms = c("charisma_lang_var", "start_iat", "family_member2_cat.response"), dodge =0.9)+
-  ylab ("RT")+
-  xlab("lang. variety mapped with charisma")+
-  theme(axis.text.x = element_text(angle = 15, hjust = 1)) ->plot_fam2.Bio
-plot_fam2.Bio
-
-ggsave(here ("output", "int_fam.Bio2.jpg"))
-```
-## Focus region
-no impact of region/ Bundesland
-```{r glm_outgroup_region, echo=FALSE}
-lmer (penal_RTs ~  charisma_lang_var*start_iat*bundesland + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model_region
-summary(model_region) 
-anova (model_region)
-
-```
-## Focus co-variant age
-explore age related slowing: present in general but not in interaction with study type variable "start_iat" & "charisma_lang_var".
-```{r glm_outgroup_age, echo=FALSE}
-# Max. Model: age
-
-Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var , ref = "standard")
-Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
-
-#lmer (penal_RTs ~ charisma_lang_var*start_iat*age + trialcount + leadership_lang_var + speaker_gender*pp_gender + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3a
-#summary (model3a)
-#anova(model3a) # drop  3-way int- "charisma_lang_var:start_iat:age" & "speaker_gender:pp_gender" non-sign
-
-# lmer (penal_RTs ~ charisma_lang_var:start_iat + charisma_lang_var:age + trialcount + leadership_lang_var + speaker_gender + pp_gender + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3a
-# summary (model3a)
-# anova(model3a)# drop "pp_gender"
-
-lmer (penal_RTs ~ charisma_lang_var:start_iat + charisma_lang_var:age + trialcount + leadership_lang_var + speaker_gender + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3a
-summary (model3a)
-anova(model3a)
-
-plot_model(model3a, title = "Predicted values of RT", type = "pred", terms = "age")+
-  ylab ("RT")+
-    xlab("age")->plot_age
-plot_age 
-
-
-emmeans(model3a, specs = pairwise ~ charisma_lang_var:start_iat)
-emtrends(model3a, "charisma_lang_var", var = "age")
-
-plot_model(model3a, title = "Predicted values of RT", type = "pred", terms = c("age", "charisma_lang_var")) +
-  ylab ("Reaction times")+
-    xlab("age")+
-labs(colour= str_wrap("Lang. variety mapped with Charisma", width = 15)) ->plot_int_age
-plot_int_age # why are there no confidence intervals
-
-ggsave(here("output", "age_slow_effect.jpg")) 
-```
-# Outgroup
-## Focus speaker gender
-no significant difference between female vernacular - male vernacular & female standard - male standard
-```{r glm_outgroup_gender, echo=FALSE}
-#as.numeric(scale(Four_Out$penal_RTs)) -> Four_Out$penal_RTs
-#as.numeric(scale(Four_Out$age)) -> Four_Out$age
-
-Four_Out%>%
-  drop_na(pp_gender)%>%
-  filter (pp_gender != "divers")->Four_Out_gend
-
-Four_Out_gend$speaker_gender = relevel(Four_Out_gend$speaker_gender , ref = "female")
-Four_Out_gend$pp_gender = relevel(Four_Out_gend$pp_gender , ref = "female")
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat*speaker_gender + trialcount + leadership_lang_var + stim_cat + age + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_gend,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3a
-summary (model3a)
-anova(model3a)
-emmeans(model3a, specs = pairwise ~ charisma_lang_var:speaker_gender) 
-
-plot_model(model3a, title = "Predicted values of RTs", type = "pred", terms = c("speaker_gender", "charisma_lang_var")) +
-  ylab ("RT") + 
-  xlab("gender of stimuli speaker")+
- labs(colour=str_wrap("Lang. variety mapped with charisma", width= 15)) ->plot_int_speak_gender
-plot_int_speak_gender
-
-
-ggsave(here("Output", "Plot_charilangXSpeaker_Gender.jpg"))
-```
-# Outgroup
-## Focus participant gender
-not significant difference between female vernacular - male vernacular & female standard - male standard
-
-```{r glm_outgroup_gender2, echo=FALSE}
-lmer (penal_RTs ~ charisma_lang_var*start_iat*pp_gender  + trialcount + leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_gend,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3c
-summary (model3c)
-anova (model3c)
-emmeans(model3c, specs = pairwise ~ charisma_lang_var:start_iat:pp_gender)
-
-plot_model(model3c, title = "Predicted values of RTs", type = "pred", terms = c("pp_gender", "charisma_lang_var")) +
-  ylab ("Reaction times") + 
-  xlab ("participant gender")+
-  labs(colour= str_wrap("Lang. variety mapped with charisma", width = 15))->plot_pp_gender
-plot_pp_gender
-
-ggsave(here("Output", "charilangXstartXpp_Gender.jpg"))
-```
-# Outgroup
-## Focus participant gender & speaker gender
-
-```{r glm_outgroup_gender3, echo=FALSE}
-
-lmer (penal_RTs ~ charisma_lang_var*pp_gender*speaker_gender  + start_iat + trialcount + leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_gend,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3d
-summary (model3d)
-anova (model3d)
-emmeans(model3d, specs = pairwise ~ charisma_lang_var:speaker_gender:pp_gender)
-
-plot_model(model3d, type = "est", show.values = T, digits = 2, dot.size = 2, show.p = T, value.offset = 0.5, value.size = 2.5, show.intercept =T, title = "Predicting reaction time", wrap.title = 10, wrap.labels = 15) ->plot_est_ppgenderXspeak_gender
-plot_est_ppgenderXspeak_gender
-
-ggsave(here("Output", "estimates_charilangXspeak_genderXpp_Gender.jpg"))
-
-
-plot_model(model3d, type = "pred", terms = c("speaker_gender", "charisma_lang_var", "pp_gender"), dodge =.5, facet_grid()) +
-   theme(plot.margin = margin(1, 1, 1, 1, "cm")) +    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  ylab ("Reaction times") + 
-  xlab ("speaker gender")+
-  labs(colour= str_wrap("Lang. variety mapped with charisma", width = 12))+
-  labs(title = "Predicted values of RTs", subtitle = "Participant gender")  ->plot_speak_genderXpp_gender
-plot_speak_genderXpp_gender
-
-ggsave(here("Output", "charilangXspeak_genderXpp_Gender.jpg"))
-
-```
-# Outgroup
-
-## Subset analysis Gender
-
-*Subset female speakers*
-
-comparisons of 2nd block not significant
-```{r outgroup_gender_subset_fem, echo=FALSE}
-Four_Out_gend%>%
-  filter(speaker_gender == "female")->Four_Out_fem
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat*pp_gender + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_fem,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model4a
-summary (model4a)
-anova(model4a)
-emmeans(model4a, specs = pairwise ~ charisma_lang_var:start_iat)
-
-lmer (penal_RTs ~ charisma_lang_var*pp_gender + start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_fem,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model4b
-summary (model4b)
-anova(model4b)
-emmeans(model4b, specs = pairwise ~ charisma_lang_var:pp_gender)
-
-plot_model(model4a, title = , type = "pred", terms = c("charisma_lang_var", "start_iat", "pp_gender"), dodge =.5) +
-   theme(plot.margin = margin(1, 1, 1, 1, "cm")) +    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  ylab ("RT")+
-xlab("Lang. variety mapped with charisma")+
-  labs(colour="started IAT with mapping")+
-  labs(title = "Predicted values of RT for speaker gender female", subtitle = "Grouped by participant gender")  ->Plot_Four_Out_fem1
-Plot_Four_Out_fem1
-ggsave(here("Output", "Four_Out_fem1.jpg"))
-
-plot_model(model4b, title = "Predicted values of RT for speaker gender female", type = "pred", term = c("charisma_lang_var", "start_iat")) +
-  ylab ("RT")+
-xlab("Lang. variety mapped with charisma")+
-  labs(colour="started IAT with mapping")->Plot_Four_Out_fem2
-Plot_Four_Out_fem2
-ggsave(here("Output", "Four_Out_fem2.jpg"))
-```
-# Outgroup
-### Subset analyses Gender
-*subset male speakers*
-difference between 2nd blocks only approaching significance, 
-```{r outgroup_gender_subset_male, echo=FALSE}
-
-Four_Out_gend%>%
-  filter (speaker_gender == "male")->Four_Out_male
-
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat*pp_gender + trialcount + age+ leadership_lang_var +  + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_male,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model4c
-summary (model4c)
-anova(model4c)
-
-lmer (penal_RTs ~ charisma_lang_var*pp_gender + trialcount + age+ leadership_lang_var +  + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_male,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model4d
-summary (model4d)
-anova(model4d)
-
-plot_model(model4c, title = , type = "pred", terms = c("charisma_lang_var", "start_iat", "pp_gender"), dodge =.5) +
-   theme(plot.margin = margin(1, 1, 1, 1, "cm")) +    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  ylab ("RT")+
-xlab("Lang. variety mapped with charisma")+
-  labs(colour="started IAT with mapping")+
-  labs(title = "Predicted values of RT for speaker gender male", subtitle = "Grouped by participant gender")  ->Plot_Four_Out_male1
-Plot_Four_Out_male1
-ggsave(here("Output", "Four_Out_male1.jpg"))
-
-plot_model(model4d, title = "Predicted values of RT for speaker gender male", type = "pred", term = c("charisma_lang_var", "pp_gender")) +
-  ylab ("RT")+
-xlab("Lang. variety mapped with charisma")->Plot_Four_Out_male2
-Plot_Four_Out_male2
-ggsave(here("Output", "Four_Out_male2.jpg"))
-
-
-```
-# Outgroup 
-## descriptives of political background measures 
-*voting behaviour & ideology & populism*
-```{r poplitical bckgr descriptives1, echo=FALSE}
-
-# summary voting behaviour
-Four_Out%>%
-  group_by(voting_behaviour)%>%
-  summarise(participants = n_distinct(bilendi_id))-> Four_Out_vot.behaviour
-
-Four_Out_vot.behaviour%>%
-  ggplot() +
-  ggtitle("Plot of Voting Behaviour") +
-  geom_col(aes(x = voting_behaviour, y = participants))+
-  xlab("party")+
-  ylab ("count of participants")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))->sum_voting_behaviour
-sum_voting_behaviour
-
-ggsave(here("Output", "sum_voting_behaviour.jpg"))
-
-# summary ideology
-
-Four_Out%>%
-  ungroup()%>%
-  select (bilendi_id, voting_behaviour, ideology)%>%
-  distinct(bilendi_id, voting_behaviour, ideology)->Four_Out_ideology
-
-Four_Out_ideology%>%
-summarise(mean(ideology), sd(ideology), min(ideology), max (ideology))-> Four_Out_sum_ideology
-
-Four_Out_ideology%>%
-ggplot(aes(x=ideology))+
-  ggtitle("Plot of political ideology") +
-         geom_bar()-> Plot_sum_ideology
-
-Plot_sum_ideology
-ggsave(here("Output", "sum_ideology.jpg"))
-
-
-# summary populism 
-
-Four_Out%>%
-  drop_na (populism1)%>%
-  drop_na (populism2)%>%
-drop_na (populism3)%>%
-drop_na (populism4)->Four_Out
-
-Four_Out%>%
-  ungroup()%>%
-  summarise(mean(populism1), sd(populism1), min(populism1), max (populism1), mean(populism2), sd(populism2), min(populism2), max (populism2),  mean(populism3), sd(populism3), min(populism3), max (populism3),mean(populism4), sd(populism4), min(populism4), max (populism4))-> Four_Out_sum_populism
-
-```
-# Outgroup
-## Populism & PCA
+## 1.7. Prep political background  
+#### 1.7.1. PCA
 *PCA shows difference of populism 4 item in comparison to items populism 1, 2, 3*
 Item populism 4 from elite dimension of Akkerman et al. 2014, populism 1-3 from populism dimension
-```{r PCA_outgroup_populism1, echo=FALSE}
+```{r PCA_populism, echo=FALSE}
 Four_Out%>%
   ungroup()%>%
   select(bilendi_id, populism1, populism2, populism3, populism4)-> PCA_pop_data
@@ -863,14 +314,10 @@ p_1a <- fviz_pca_var(pca_pop,geom = c("point","text"),
 
 p_1a 
 
-ggsave(here("Output", "Four_Out_PCA_populism.jpg"))
+#ggsave(here("Output", "Four_Out_PCA_populism.jpg"))
 ```
-# Outgroup 
-## Populism & PCA
-
-*new dimension reduction variable for populism after PCA*
-
-```{r PCA_outgroup_populism2, echo=FALSE}
+*dimension reduction populism scales 1-4 after PCA*
+```{r PCA_dim_reduction_populism, echo=FALSE}
 
 
 populism_dim <- pca_pop$ind$coord [,1] 
@@ -883,11 +330,9 @@ left_join (Four_Out, PCA_pop_data_final, by = c("bilendi_id", "populism1", "popu
   
 rename (Four_Out, populism_dim = value)-> Four_Out
 ```
-# Outgroup
-## prep populism
+*final dummy variables populism*
 create 2 dummy variables for populism a) mean of populism scores items 1-3, but exclude pop 4 -> PCA shows very different b) use principal component 1 as dummy
-
-```{r poplitical bckgr prep, echo=FALSE}
+```{r poplitical bckgr pop_dummies, echo=FALSE}
 Four_Out %>%
   mutate(populism_all = rowMeans(across(c(populism1, populism2, populism3), as.numeric, .names = "mean_{col}"), na.rm = TRUE)) -> Four_Out
 
@@ -900,7 +345,7 @@ ggplot(aes(x=populism_all))+
   ylab("no. of participants")+
   xlab("total score of populism items 1-3")-> Plot_sum_pop1
 Plot_sum_pop1
-ggsave(here("Output", "Plot_sum_pop1.jpg"))
+#ggsave(here("Output", "Plot_sum_pop1.jpg"))
 
 
 # add new populism dimension 1 of PCA
@@ -913,20 +358,8 @@ populism_dim%>%
   xlab ("Populism Prinincipal Component Scores")-> Plot_sum_pop2
 Plot_sum_pop2
 ```
-# Outgroup
-## prep all political background measures 
-scale political bckgr variables
-```{r poplitical bckgr prep2, echo=FALSE}
-as.numeric(scale(Four_Out$ideology))-> Four_Out$ideology
-as.numeric(scale(Four_Out$populism1))-> Four_Out$populism1
-as.numeric(scale(Four_Out$populism2))-> Four_Out$populism2
-as.numeric(scale (Four_Out$populism3))-> Four_Out$populism3
-as.numeric(scale (Four_Out$populism4))-> Four_Out$populism4
-```
-# Outgroup
-## prep populism
-* create populism subsets*
-```{r poplitical bckgr prep3, echo=FALSE}
+#### 1.7.2. Create subsets - high & low populism  
+```{r populism_subsets, echo=FALSE}
 Four_Out%>%
   ungroup()%>%
   summarise (sum(is.na(populism_all)))-> NA_no
@@ -934,19 +367,767 @@ Four_Out%>%
 anyNA(Four_Out$populism_all)
 
 
-quantile(Four_Out$populism_all, na.rm = F) # 0% = 1;    25% = 2.666667     50%  = 3.333333     75% = 3.666667     100% = 5.0
-
+quantile(Four_Out$populism_all, na.rm = F) # 0%   1.000000;   25% 2.666667;      50%  3.333333;    75%  3.666667;   100% 5.000000 
+    
 Four_Out%>%
   filter(populism_all <= 3.333333)->Four_Out_low_pop
 
 Four_Out%>%
   filter(populism_all >= 3.333333)->Four_Out_high_pop
-
+```
+How many participants in subset high populism?
+```{r populism_subsets_check_pp1, echo=FALSE}
 n_distinct (Four_Out_high_pop$bilendi_id)
+
+```
+How many participants in subset low populism?
+```{r populism_subsets_check_pp2, echo=FALSE}
 n_distinct (Four_Out_low_pop$bilendi_id)
 ```
-## political background measures
-### GLMs: Max model
+### 2.6. Prep SES  
+#### Create subsets dummy variables education/ training
+Create four data sets: high, middle, low as well as middle & low training/ education summary variables
+```{r subset_SES_prep, echo=FALSE}
+Four_Out%>%
+  filter(sum_training == "high")-> Four_Out_high_train
+Four_Out%>%
+  filter(sum_training == "middle")-> Four_Out_middle_train
+Four_Out%>%
+  filter(sum_training == "low")-> Four_Out_low_train
+Four_Out%>%
+  filter(sum_training == "middle" | sum_training == "low")-> Four_Out_middle_low_train
+
+
+Four_Out%>%
+  filter(sum_education == "high")-> Four_Out_high_edu
+Four_Out%>%
+  filter(sum_education == "middle")-> Four_Out_middle_edu
+Four_Out%>%
+  filter(sum_education == "low")-> Four_Out_low_edu
+Four_Out%>%
+  filter(sum_education == "middle" | sum_education == "low")-> Four_Out_middle_low_edu
+```
+# 2. Descriptives
+## 2.1. Leadership stimuli
+### Top 6 attributes & consistency
+Which attributes most often among top 6 for each leadership group?
+How consistent is participants' ranking?
+```{r preselection2, echo=FALSE}
+result_preselect %>%
+  group_by(Pre_select_type, Pre_select_Attribute) %>%
+  summarise(rank_counts = sum(Pre_select_Rank <= 6)) %>%
+  ungroup() %>%
+  arrange(Pre_select_type, desc(rank_counts))->sum_attri_table
+
+result_preselect %>%
+  distinct(bilendi_id, Pre_select_type, Pre_select_Attribute, Pre_select_Rank)%>%
+  group_by(Pre_select_type, Pre_select_Attribute) %>%
+  summarise(mean_Rank = mean (Pre_select_Rank), median_Rank = median(Pre_select_Rank), RanK_standard_deviation = sd(Pre_select_Rank)) %>%
+  arrange(Pre_select_type, desc(RanK_standard_deviation))->consistency_attri
+
+# join tables
+
+left_join(sum_attri_table,consistency_attri, by= c("Pre_select_type", "Pre_select_Attribute")) -> pre_select_attri
+
+pre_select_attri
+
+# Output summary table as csv
+
+write_delim(pre_select_attri, here::here("output", "pre_select_attri.csv"), col_names = TRUE, delim = ",")
+
+```
+### Process of pre-selection of leadership attributes
+Average clicks made for selection & average check of allocation
+variable "count_ click_sequence": Count of sequences (1 sequence = 2 clicks:  1x selection of attribute +  1x allocation to place) min. 20 
+variable "count_ check_selection": Count of calling check-up screen to revise pre-selection (Screen with „Überprüfen Sie Ihre Auswahl…“), value min. 1
+```{r preslection3, echo=FALSE}
+
+data_pre%>%
+  distinct(bilendi_id, count_click_sequence, count_check_selection)%>%
+  summarise(mean_clicks = mean (count_click_sequence), sd_click = sd (count_click_sequence), mean_check = mean (count_check_selection), sd_check = sd (count_check_selection))-> flow_pre_select
+
+flow_pre_select
+```
+### Practice trials  
+average no. of practice trials after selection of attributes & average accuracy in last practice trials
+variable "n_practice": Count of block no. of pre-selection practice (min: 0-3, max. 7)
+variable "accuracy_practice_trial": Accuracy of block no. (max. 1 = 100%)
+```{r preselection4, echo=FALSE}
+data_pre%>%
+  distinct(bilendi_id, n_practice, accuracy_practice_trial)%>%
+  summarise(mean_n_practice = mean (n_practice), sd_practice = sd (n_practice), mean_acc_pract_overall = mean (accuracy_practice_trial), sd_acc_pract_overall = sd (accuracy_practice_trial))-> flow_pre_practice
+
+flow_pre_practice
+
+data_pre %>%
+  group_by(bilendi_id) %>%
+  summarise(
+    highest_block = max(n_practice),
+    mean_accuracy_highest_block = mean(accuracy_practice_trial[n_practice == max(n_practice)])) %>%
+  summarise(
+    mean_accuracy_across_all = mean(mean_accuracy_highest_block), sd_accuracy_across_all = sd(mean_accuracy_highest_block))-> sum_acc_practice
+
+sum_acc_practice
+```
+## 2.2. IAT data sets  
+*No. of different stimuli presented*
+how many stimuli presented to participants? -> 303! we had: lang. var stimuli: 6 speaker x 2 varieties  x 6 stimuli = 72 different stimuli PLUS leadership stimuli: 6 speakers x 2 varieties x 2 leadership cat x 6 stimuli = 144 different stimuli = 216, but since we had individual pre-selection, individuals vary what they picked as stimuli for leadership since not all participants picked the same 6 stimuli for leadership stimuli -> additional variation
+```{r descriptives_stimuli_no, echo=FALSE}
+
+n_distinct(filtered_FourExpBlock$bilendi_id)
+```
+*No. of participants in different data sets*
+Ingroup data set
+```{r descriptives_IAT_pp_no_all, echo=FALSE}
+n_distinct(Four_In$bilendi_id)
+```
+Outgroup data set
+```{r descriptives_IAT_pp_no_out, echo=FALSE}
+n_distinct(Four_Out$bilendi_id)
+```
+*Participants' age*
+age in all data set
+```{r descriptives_IAT_age_all, echo=FALSE}
+filtered_FourExpBlock %>%
+drop_na(age)%>%
+  summarise(mean(age), sd (age), min (age), max (age)) -> data_pp_age_result
+data_pp_age_result
+
+filtered_FourExpBlock%>%
+  group_by(age)%>%
+  summarise(participants = n_distinct(bilendi_id))-> All_data_age
+
+All_data_age%>%
+  ggplot() +
+  ggtitle("age distribution in all data set") +
+  geom_line(aes(x = age, y = participants))+
+  xlab("age")+
+  ylab ("count of participants")->sum_age_all
+sum_age_all
+
+```
+age in outgroup data set
+```{r descriptives_IAT_age_out, echo=FALSE}
+Four_Out %>%
+drop_na(age)%>%
+  summarise(mean(age), sd (age), min (age), max (age)) -> data_pp_age_Out
+
+Four_Out%>%
+  group_by(age)%>%
+  summarise(participants = n_distinct(bilendi_id))-> Four_Out_age
+
+Four_Out_age%>%
+  ggplot() +
+  ggtitle("age distribution in outgroup data set") +
+  geom_line(aes(x = age, y = participants))+
+  xlab("age")+
+  ylab ("count of participants")->sum_age_out
+sum_age_out
+```
+age in ingroup data set
+```{r descriptives_IAT_age_in, echo=FALSE}
+
+Four_In %>%
+drop_na(age)%>%
+  summarise(mean(age), sd (age), min (age), max (age)) -> data_pp_age_In
+data_pp_age_In
+
+Four_In%>%
+  group_by(age)%>%
+  summarise(participants = n_distinct(bilendi_id))-> Four_In_age
+
+Four_In_age%>%
+  ggplot() +
+  ggtitle("age distribution in ingroup data set") +
+  geom_line(aes(x = age, y = participants))+
+  xlab("age")+
+  ylab ("count of participants")->sum_age_in
+sum_age_in
+```
+write descriptive age to file
+```{r descriptives_IAT_age_export, eval=FALSE, include=FALSE}
+write.table(data_pp_age_Out, "data_pp_age_Out.csv")
+```
+*Participants' gender*
+Gender distribution of participants in complete data set
+```{r descriptives_IAT_gender_all, echo=FALSE}
+filtered_FourExpBlock %>%
+  group_by(pp_gender)%>%
+  summarise(n_distinct(bilendi_id))-> data_pp_gender
+data_pp_gender
+
+filtered_FourExpBlock%>%
+  group_by(pp_gender)%>%
+  summarise(participants = n_distinct(bilendi_id))-> All_data_gender
+
+All_data_gender%>%
+  ggplot() +
+  ggtitle("Plot of Gender Distribution in complete data set") +
+  geom_col(aes(x = pp_gender, y = participants))+
+  xlab("gender")+
+  ylab ("count of participants")->sum_gender_all
+sum_gender_all
+```
+Gender distribution of participants in outgroup data set
+```{r descriptives_IAT_gender_out, echo=FALSE}
+Four_Out %>%
+  group_by(pp_gender)%>%
+  summarise(n_distinct(bilendi_id))-> data_pp_gender_Out
+data_pp_gender_Out
+
+Four_Out%>%
+  group_by(pp_gender)%>%
+  summarise(participants = n_distinct(bilendi_id))-> Outgroup_gender
+
+Outgroup_gender%>%
+  ggplot() +
+  ggtitle("Plot of Gender Distribution in Outgroup") +
+  geom_col(aes(x = pp_gender, y = participants))+
+  xlab("gender")+
+  ylab ("count of participants")->sum_gender_out
+sum_gender_out
+
+```
+Gender distribution of participants in ingroup data set
+```{r descriptives_IAT_gender_in, echo=FALSE}
+Four_In %>%
+  group_by(pp_gender)%>%
+  summarise(n_distinct(bilendi_id))-> data_pp_gender_In
+data_pp_gender_In
+
+Four_In%>%
+  group_by(pp_gender)%>%
+  summarise(participants = n_distinct(bilendi_id))-> Ingroup_gender
+
+Ingroup_gender%>%
+  ggplot() +
+  ggtitle("Plot of Gender Distribution in Ingroup") +
+  geom_col(aes(x = pp_gender, y = participants))+
+  xlab("gender")+
+  ylab ("count of participants")->sum_gender_in
+sum_gender_in
+```
+*Participants' language biography*
+exposure to language varieties by family member 1 & 2 in outgroup data set
+```{r descriptives_IAT_lang_fam_bio, echo=FALSE}
+Four_Out %>%
+  group_by(family_member1_cat.response) %>%
+  summarise(count = n_distinct(bilendi_id)) %>%
+  arrange(count) -> data_pp_fam.bio1_out
+
+data_pp_fam.bio1_out%>%
+  ggplot() +
+  ggtitle("Language variety of family member1 in Outgroup") +
+  geom_col(aes(x = family_member1_cat.response, y = count))+
+  xlab("language variety")+
+  ylab ("count of participants")->sum_lang.bio1_out
+sum_lang.bio1_out
+
+
+Four_Out%>%group_by(family_member2_cat.response)%>%
+  summarise(count = n_distinct(bilendi_id))%>% arrange(count)->data_pp_fam.bio2_out
+
+data_pp_fam.bio2_out%>%
+  ggplot() +
+  ggtitle("Language variety of family member2 in Outgroup") +
+  geom_col(aes(x = family_member2_cat.response, y = count))+
+  xlab("language variety")+
+  ylab ("count of participants")->sum_lang.bio2_out
+sum_lang.bio2_out
+
+bind_cols(data_pp_fam.bio1_out, data_pp_fam.bio2_out)-> data_pp_fam.bio_out
+```
+*Participants' higher education & professional training*
+In all data set
+```{r descriptives_IAT_sum_training_all_data, echo=FALSE}
+filtered_FourExpBlock %>%
+   group_by(sum_training)%>%
+   summarise(count = n_distinct(bilendi_id)) -> data_pp_training
+data_pp_training
+
+data_pp_training%>%
+  ggplot() +
+  ggtitle("Higher education/training in all data") +
+  geom_col(aes(x = sum_training, y = count))+
+  xlab("Higher education/training")+
+  ylab ("count of participants")->sum_training_all
+sum_training_all
+
+```
+In outgroup data set
+```{r descriptives_IAT_sum_training_out, echo=FALSE}
+Four_Out %>%
+   group_by(sum_training)%>%
+   summarise(count = n_distinct(bilendi_id)) -> data_pp_training_Out
+data_pp_training_Out
+
+data_pp_training_Out%>%
+  ggplot() +
+  ggtitle("Higher education/training in Outgroup") +
+  geom_col(aes(x = sum_training, y = count))+
+  xlab("Higher Education/training")+
+  ylab ("count of participants")->sum_training_out
+sum_training_out
+```
+*Participants' secondary education*
+In outgroup data set
+```{r descriptives_IAT_sum_education_out, echo=FALSE}
+# detailed variable education
+Four_Out%>%
+  group_by(education)%>%
+summarise(n_distinct(bilendi_id))-> overview_education
+
+# summary variable education
+
+Four_Out %>%
+   group_by(sum_education)%>%
+   summarise(count = n_distinct(bilendi_id)) -> data_pp_education_Out
+data_pp_education_Out
+
+data_pp_education_Out%>%
+  ggplot() +
+  ggtitle("Secondary education in Outgroup") +
+  geom_col(aes(x = sum_education, y = count))+
+  xlab("Secondary Education")+
+  ylab ("count of participants")->sum_education_out
+sum_education_out
+```
+In all data set
+```{r descriptives_IAT_sum_education_all, echo=FALSE}
+filtered_FourExpBlock %>%
+   group_by(sum_education)%>%
+   summarise(count = n_distinct(bilendi_id)) -> data_pp_education
+data_pp_education
+
+data_pp_education%>%
+  ggplot() +
+  ggtitle("Secondary education in all data") +
+  geom_col(aes(x = sum_education, y = count))+
+  xlab("Secondary Education")+
+  ylab ("count of participants")->sum_education_all
+sum_education_all
+```
+In ingroup data set
+```{r descriptives_IAT_sum_education_in, echo=FALSE}
+Four_In %>%
+   group_by(sum_education)%>%
+   summarise(count = n_distinct(bilendi_id)) -> data_pp_education_in
+data_pp_education_in
+
+data_pp_education_in%>%
+  ggplot() +
+  ggtitle("Secondary education in Ingroup") +
+  geom_col(aes(x = sum_education, y = count))+
+  xlab("Secondary Education")+
+  ylab ("count of participants")->sum_education_in
+sum_education_in
+```
+*Participants' monthly income*
+```{r descriptives_IAT_monthly_income, echo=FALSE}
+Four_Out%>%
+  group_by(monthly_income)%>%
+summarise(n_distinct(bilendi_id))-> overview_monthly_income
+```
+*participants' political background*
+**voting behaviour**
+```{r poplitical bckgr descriptives_vot_behave, echo=FALSE}
+Four_Out%>%
+  group_by(voting_behaviour)%>%
+  summarise(participants = n_distinct(bilendi_id))-> Four_Out_vot.behaviour
+
+Four_Out_vot.behaviour%>%
+  ggplot() +
+  ggtitle("Plot of Voting Behaviour") +
+  geom_col(aes(x = voting_behaviour, y = participants))+
+  xlab("party")+
+  ylab ("count of participants")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))->sum_voting_behaviour
+sum_voting_behaviour
+
+#ggsave(here("Output", "sum_voting_behaviour.jpg"))
+
+```
+**political ideology**
+```{r poplitical bckgr ideology, echo=FALSE}
+Four_Out%>%
+  ungroup()%>%
+  select (bilendi_id, voting_behaviour, ideology)%>%
+  distinct(bilendi_id, voting_behaviour, ideology)->Four_Out_ideology
+
+Four_Out_ideology%>%
+summarise(mean(ideology), sd(ideology), min(ideology), max (ideology))-> Four_Out_sum_ideology
+
+Four_Out_ideology%>%
+ggplot(aes(x=ideology))+
+  ggtitle("Plot of political ideology") +
+         geom_bar()-> Plot_sum_ideology
+
+Plot_sum_ideology
+#ggsave(here("Output", "sum_ideology.jpg"))
+```
+**populism**
+```{r poplitical bckgr populism, echo=FALSE}
+Four_Out%>%
+  drop_na (populism1)%>%
+  drop_na (populism2)%>%
+drop_na (populism3)%>%
+drop_na (populism4)->Four_Out
+Four_Out%>%
+  ungroup()%>%
+  summarise(mean(populism1), sd(populism1), min(populism1), max (populism1), mean(populism2), sd(populism2), min(populism2), max (populism2),  mean(populism3), sd(populism3), min(populism3), max (populism3),mean(populism4), sd(populism4), min(populism4), max (populism4))-> Four_Out_sum_populism
+```
+### scale all variables
+```{r scale all, include=FALSE}
+# data set: Four Out
+Four_Out$ideology <- scale(Four_Out$ideology)
+Four_Out$populism1 <- scale(Four_Out$populism1)
+Four_Out$populism2 <- scale(Four_Out$populism2)
+Four_Out$populism3 <- scale(Four_Out$populism3)
+Four_Out$populism4 <- scale(Four_Out$populism4)
+Four_Out$populism_all <- scale(Four_Out$populism_all)
+Four_Out$populism_dim <- scale(Four_Out$populism_dim)
+Four_Out$age <- scale(Four_Out$age)
+Four_Out$penal_RTs <- scale(Four_Out$penal_RTs)
+Four_Out$response_time <- scale(Four_Out$response_time)
+
+
+# subset: Outgroup, high populism
+Four_Out_high_pop$ideology <- scale(Four_Out_high_pop$ideology)
+Four_Out_high_pop$populism1 <- scale(Four_Out_high_pop$populism1)
+Four_Out_high_pop$populism2 <- scale(Four_Out_high_pop$populism2)
+Four_Out_high_pop$populism3 <- scale(Four_Out_high_pop$populism3)
+Four_Out_high_pop$populism4 <- scale(Four_Out_high_pop$populism4)
+Four_Out_high_pop$populism_all <- scale(Four_Out_high_pop$populism_all)
+Four_Out_high_pop$populism_dim <- scale(Four_Out_high_pop$populism_dim)
+Four_Out_high_pop$age <- scale(Four_Out_high_pop$age)
+Four_Out_high_pop$penal_RTs <- scale(Four_Out_high_pop$penal_RTs)
+Four_Out_high_pop$response_time <- scale(Four_Out_high_pop$response_time)
+
+# subset: Outgroup, low populism
+
+Four_Out_low_pop$ideology <- scale(Four_Out_low_pop$ideology)
+Four_Out_low_pop$populism1 <- scale(Four_Out_low_pop$populism1)
+Four_Out_low_pop$populism2 <- scale(Four_Out_low_pop$populism2)
+Four_Out_low_pop$populism3 <- scale(Four_Out_low_pop$populism3)
+Four_Out_low_pop$populism4 <- scale(Four_Out_low_pop$populism4)
+Four_Out_low_pop$populism_all <- scale(Four_Out_low_pop$populism_all)
+Four_Out_low_pop$populism_dim <- scale(Four_Out_low_pop$populism_dim)
+Four_Out_low_pop$age <- scale(Four_Out_low_pop$age)
+Four_Out_low_pop$penal_RTs <- scale(Four_Out_low_pop$penal_RTs)
+Four_Out_low_pop$response_time <- scale(Four_Out_low_pop$response_time)
+
+# subset: Ingroup
+Four_In
+Four_In$ideology <- scale(Four_In$ideology)
+Four_In$populism1 <- scale(Four_In$populism1)
+Four_In$populism2 <- scale(Four_In$populism2)
+Four_In$populism3 <- scale(Four_In$populism3)
+Four_In$populism4 <- scale(Four_In$populism4)
+Four_In$age <- scale(Four_In$age)
+Four_In$penal_RTs <- scale(Four_In$penal_RTs)
+Four_In$response_time <- scale(Four_In$response_time)
+```
+# 3. Analyses of outgroup data set
+## 3.1. Correlation matrix
+```{r corr._matrix, echo=FALSE}
+as.numeric(Four_Out$age)->Four_Out$age
+as.numeric(Four_Out$ideology)->Four_Out$ideology
+as.numeric(Four_Out$populism1)->Four_Out$populism1
+as.numeric(Four_Out$populism2)->Four_Out$populism2
+as.numeric(Four_Out$populism3)->Four_Out$populism3
+as.numeric(Four_Out$populism4)->Four_Out$populism4
+
+drop_na(Four_Out, age)->Four_Out
+drop_na(Four_Out, ideology)->Four_Out
+drop_na(Four_Out, populism1)->Four_Out
+drop_na(Four_Out, populism2)->Four_Out
+drop_na(Four_Out, populism3)->Four_Out
+drop_na(Four_Out, populism4)->Four_Out
+
+
+Four_Out%>%
+  ungroup()%>%
+  select(penal_RTs, age, ideology, populism1, populism2, populism3, populism4)-> bckgr_poli
+
+cor(bckgr_poli)->matrix_bckgr_poli
+
+matrix_bckgr_poli
+# Visualize correlations
+
+
+ggcorrplot(matrix_bckgr_poli, 
+           title = "Background variables", hc.order = TRUE, 
+           type = "lower",lab = TRUE, lab_size = 2.5,  insig = "blank")->plot_corr_matrix
+plot_corr_matrix
+
+#ggsave(here ("output", "plot_corr_matrix.jpg"))
+```
+## 2.2. Impact language variety only
+RQ: Do participants associate standard language variety more with charisma compared the vernacular variety? i.e. Are RTs faster when standard variety is mapped on the same key as charisma compared to when vernacular variety is mapped with charisma independent from study type (which mapping of language variety & charisma participants start with)?
+
+Reaction time experiments need to take into account age related slowing. Two options to address age related slowing in model: 1) use z-scored RTs as DV 2) use age as co-variant
+
+### 2.2.1. GLMs with age standardised RTs as DV
+
+But: all models are singular fits, continue with age as co-variant
+```{r glm_age_st_RTs, eval=FALSE, include=FALSE}
+
+Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
+Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "standard")
+
+# lmer (z_scored_RTS1 ~ charisma_lang_var*start_iat + trialcount + stim_cat +(charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence
+
+lmer (z_scored_RTS1 ~ charisma_lang_var*start_iat + trialcount + stim_cat +(1|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence
+
+allFit(model1a) 
+summary (model1a)
+anova(model1a)
+```
+### 2.2.2 GLMS - age as covariant  
+Max. model regarding experimental variables
+```{r glm_outgroup_max.model, echo=FALSE}
+Four_Out$start_iat = relevel(Four_Out$start_iat, ref = "standard-with Charisma")
+Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "standard")
+
+#lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat + age +(charisma_lang_var:start_iat|bilendi_id) +  (charisma_lang_var|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence -> simplify RE - structure
+
+#lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat + age +(charisma_lang_var|bilendi_id) +  (charisma_lang_var:start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence  -> simplify RE - structure
+```
+best fit model:
+shows 2nd block (standard vernacular-with Charisma vs. vernacular standard-with Charisma) is significantly different
+```{r glm_outgroup_best_fit_model1, echo=FALSE}
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat + age +(charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a
+summary (model1a)
+anova(model1a)
+
+emmeans(model1a, specs = pairwise ~ charisma_lang_var:start_iat)
+
+plot_model(model1a, title = "Predicted values of reaction times", type = "pred", terms = c("charisma_lang_var", "start_iat")) +
+  ylab ("reaction times")+
+    xlab("lang. variety mapped with charisma")+
+  labs(colour= str_wrap("Mapping of IAT start", width = 15))->plot_model1a
+plot_model1a
+
+#ggsave(here ("output", "int_lang.variety_start_iat.jpg"))
+```
+change reference level to vernacular
+```{r glm_outgroup_best_fit_model_diff_ref_level, echo=FALSE}
+Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "vernacular-with Charisma")
+Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "vernacular")
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var  + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1b
+summary(model1b)
+```
+## 2.3. Language variety plus foci 
+### 2.3.1. Age
+explore age related slowing: present in general but not in interaction with study type variable "start_iat" & "charisma_lang_var".
+```{r glm_age, echo=FALSE}
+# Max. Model: age
+
+Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var , ref = "standard")
+Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
+
+#lmer (penal_RTs ~ charisma_lang_var*start_iat*age + trialcount + leadership_lang_var + speaker_gender*pp_gender + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3a
+#summary (model3a)
+#anova(model3a) # drop  3-way int- "charisma_lang_var:start_iat:age" & "speaker_gender:pp_gender" non-sign
+
+# lmer (penal_RTs ~ charisma_lang_var:start_iat + charisma_lang_var:age + trialcount + leadership_lang_var + speaker_gender + pp_gender + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3a
+# summary (model3a)
+# anova(model3a)# drop "pp_gender"
+
+lmer (penal_RTs ~ charisma_lang_var:start_iat + charisma_lang_var:age + trialcount + leadership_lang_var + speaker_gender + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3a
+summary (model3a)
+anova(model3a)
+
+plot_model(model3a, title = "Predicted values of RT", type = "pred", terms = "age")+
+  ylab ("RT")+
+    xlab("age")->plot_age
+plot_age 
+
+
+emmeans(model3a, specs = pairwise ~ charisma_lang_var:start_iat)
+emtrends(model3a, "charisma_lang_var", var = "age")
+
+plot_model(model3a, title = "Predicted values of RT", type = "pred", terms = c("age", "charisma_lang_var")) +
+  ylab ("Reaction times")+
+    xlab("age")+
+labs(colour= str_wrap("Lang. variety mapped with Charisma", width = 15)) ->plot_int_age
+plot_int_age # why are there no confidence intervals
+
+#ggsave(here("output", "age_slow_effect.jpg")) 
+```
+### 2.3.2 Family language  
+```{r glm_outgroup_family.bio, echo=FALSE}
+Four_Out$family_member1_cat.response = relevel(Four_Out$family_member1_cat.response , ref = "standard")
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat*family_member1_cat.response + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model2a_fam.Bio
+summary(model2a_fam.Bio)
+anova(model2a_fam.Bio)
+
+Four_Out$family_member2_cat.response = relevel(Four_Out$family_member2_cat.response , ref = "standard")
+
+lmer (penal_RTs ~  charisma_lang_var*start_iat*family_member2_cat.response + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model2b_fam.Bio
+summary(model2b_fam.Bio) 
+anova (model2b_fam.Bio)
+
+
+plot_model(model2a_fam.Bio, title = "Predicted Values of RT", type = "pred", terms =  c("charisma_lang_var", "start_iat", "family_member1_cat.response"), dodge =0.9) +
+   theme(plot.margin = margin(0.5, .5, .5, .5, "cm")) +    theme(axis.text.x = element_text(angle = 15, hjust = 1))+
+  ylab ("RT")+
+  xlab("lang. variety mapped with charisma") ->plot_fam1.Bio
+plot_fam1.Bio
+#ggsave(here ("output", "int_fam.Bio1.jpg"))
+
+plot_model(model2b_fam.Bio, title = "Predicted values of reaction times", type = "pred", terms = c("charisma_lang_var", "start_iat", "family_member2_cat.response"), dodge =0.9)+
+  ylab ("RT")+
+  xlab("lang. variety mapped with charisma")+
+  theme(axis.text.x = element_text(angle = 15, hjust = 1)) ->plot_fam2.Bio
+plot_fam2.Bio
+
+#ggsave(here ("output", "int_fam.Bio2.jpg"))
+```
+### 2.3.3 Region
+no impact of region/ Bundesland
+```{r glm_outgroup_region, echo=FALSE}
+lmer (penal_RTs ~  charisma_lang_var*start_iat*bundesland + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model_region
+summary(model_region) 
+anova (model_region)
+```
+### 2.3.4 Focus gender
+#### Speaker gender
+no significant difference between female vernacular - male vernacular & female standard - male standard
+```{r glm_outgroup_speak_gender, echo=FALSE}
+#as.numeric(scale(Four_Out$penal_RTs)) -> Four_Out$penal_RTs
+#as.numeric(scale(Four_Out$age)) -> Four_Out$age
+
+Four_Out%>%
+  drop_na(pp_gender)%>%
+  filter (pp_gender != "divers")->Four_Out_gend
+
+Four_Out_gend$speaker_gender = relevel(Four_Out_gend$speaker_gender , ref = "female")
+Four_Out_gend$pp_gender = relevel(Four_Out_gend$pp_gender , ref = "female")
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat*speaker_gender + trialcount + leadership_lang_var + stim_cat + age + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_gend,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3a
+summary (model3a)
+anova(model3a)
+emmeans(model3a, specs = pairwise ~ charisma_lang_var:speaker_gender) 
+
+plot_model(model3a, title = "Predicted values of RTs", type = "pred", terms = c("speaker_gender", "charisma_lang_var")) +
+  ylab ("RT") + 
+  xlab("gender of stimuli speaker")+
+ labs(colour=str_wrap("Lang. variety mapped with charisma", width= 15)) ->plot_int_speak_gender
+plot_int_speak_gender
+
+
+#ggsave(here("Output", "Plot_charilangXSpeaker_Gender.jpg"))
+```
+#### Participant gender  
+not significant difference between female vernacular - male vernacular & female standard - male standard
+```{r glm_outgroup_pp_gender, echo=FALSE}
+lmer (penal_RTs ~ charisma_lang_var*start_iat*pp_gender  + trialcount + leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_gend,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3c
+summary (model3c)
+anova (model3c)
+emmeans(model3c, specs = pairwise ~ charisma_lang_var:start_iat:pp_gender)
+
+plot_model(model3c, title = "Predicted values of RTs", type = "pred", terms = c("pp_gender", "charisma_lang_var")) +
+  ylab ("Reaction times") + 
+  xlab ("participant gender")+
+  labs(colour= str_wrap("Lang. variety mapped with charisma", width = 15))->plot_pp_gender
+plot_pp_gender
+
+#ggsave(here("Output", "charilangXstartXpp_Gender.jpg"))
+```
+#### Interaction participant & speaker gender
+```{r glm_pp_speak_gender, echo=FALSE}
+
+lmer (penal_RTs ~ charisma_lang_var*pp_gender*speaker_gender  + start_iat + trialcount + leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_gend,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model3d
+summary (model3d)
+anova (model3d)
+emmeans(model3d, specs = pairwise ~ charisma_lang_var:speaker_gender:pp_gender)
+
+plot_model(model3d, type = "est", show.values = T, digits = 2, dot.size = 2, show.p = T, value.offset = 0.5, value.size = 2.5, show.intercept =T, title = "Predicting reaction time", wrap.title = 10, wrap.labels = 15) ->plot_est_ppgenderXspeak_gender
+plot_est_ppgenderXspeak_gender
+
+#ggsave(here("Output", "estimates_charilangXspeak_genderXpp_Gender.jpg"))
+
+
+plot_model(model3d, type = "pred", terms = c("speaker_gender", "charisma_lang_var", "pp_gender"), dodge =.5, facet_grid()) +
+   theme(plot.margin = margin(1, 1, 1, 1, "cm")) +    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  ylab ("Reaction times") + 
+  xlab ("speaker gender")+
+  labs(colour= str_wrap("Lang. variety mapped with charisma", width = 12))+
+  labs(title = "Predicted values of RTs", subtitle = "Participant gender")  ->plot_speak_genderXpp_gender
+plot_speak_genderXpp_gender
+
+#ggsave(here("Output", "charilangXspeak_genderXpp_Gender.jpg"))
+```
+#### Subset analyses gender  
+##### female speaker  
+comparisons of 2nd block not significant
+```{r outgroup_gender_subset_fem, echo=FALSE}
+Four_Out_gend%>%
+  filter(speaker_gender == "female")->Four_Out_fem
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat*pp_gender + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_fem,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model4a
+summary (model4a)
+anova(model4a)
+emmeans(model4a, specs = pairwise ~ charisma_lang_var:start_iat)
+
+lmer (penal_RTs ~ charisma_lang_var*pp_gender + start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_fem,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model4b
+summary (model4b)
+anova(model4b)
+emmeans(model4b, specs = pairwise ~ charisma_lang_var:pp_gender)
+
+plot_model(model4a, title = , type = "pred", terms = c("charisma_lang_var", "start_iat", "pp_gender"), dodge =.5) +
+   theme(plot.margin = margin(1, 1, 1, 1, "cm")) +    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  ylab ("RT")+
+xlab("Lang. variety mapped with charisma")+
+  labs(colour="started IAT with mapping")+
+  labs(title = "Predicted values of RT for speaker gender female", subtitle = "Grouped by participant gender")  ->Plot_Four_Out_fem1
+Plot_Four_Out_fem1
+#ggsave(here("Output", "Four_Out_fem1.jpg"))
+
+plot_model(model4b, title = "Predicted values of RT for speaker gender female", type = "pred", term = c("charisma_lang_var", "start_iat")) +
+  ylab ("RT")+
+xlab("Lang. variety mapped with charisma")+
+  labs(colour="started IAT with mapping")->Plot_Four_Out_fem2
+Plot_Four_Out_fem2
+#ggsave(here("Output", "Four_Out_fem2.jpg"))
+```
+##### male speakers  
+language variety impact between 2nd blocks of different study types only approaching significance 
+```{r outgroup_gender_subset_male, echo=FALSE}
+Four_Out_gend%>%
+  filter (speaker_gender == "male")->Four_Out_male
+
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat*pp_gender + trialcount + age+ leadership_lang_var +  + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_male,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model4c
+summary (model4c)
+anova(model4c)
+
+lmer (penal_RTs ~ charisma_lang_var*pp_gender + trialcount + age+ leadership_lang_var +  + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_male,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model4d
+summary (model4d)
+anova(model4d)
+
+plot_model(model4c, title = , type = "pred", terms = c("charisma_lang_var", "start_iat", "pp_gender"), dodge =.5) +
+   theme(plot.margin = margin(1, 1, 1, 1, "cm")) +    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  ylab ("RT")+
+xlab("Lang. variety mapped with charisma")+
+  labs(colour="started IAT with mapping")+
+  labs(title = "Predicted values of RT for speaker gender male", subtitle = "Grouped by participant gender")  ->Plot_Four_Out_male1
+Plot_Four_Out_male1
+#ggsave(here("Output", "Four_Out_male1.jpg"))
+
+plot_model(model4d, title = "Predicted values of RT for speaker gender male", type = "pred", term = c("charisma_lang_var", "pp_gender")) +
+  ylab ("RT")+
+xlab("Lang. variety mapped with charisma")->Plot_Four_Out_male2
+Plot_Four_Out_male2
+#ggsave(here("Output", "Four_Out_male2.jpg"))
+```
+## 2.4. Language variety & political background
+RQ: Do variables of participants' political background mediate how language variety impacts on reaction times?
+### 2.4.1. GLMs: Max model
 ```{r poplitical bckgr max model, echo=FALSE}
 # Max. Model all political background measures
 
@@ -956,12 +1137,11 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat + age+ lea
 summary (model5)
 anova(model5)
 ```
-## political background measures
-### focus: populism
-*no impact of populism measure, populism_all, populism_dim
-```{r poplitical bckgr pop, echo=FALSE}
-# using variable populism_all (mean of 3 pop. measures)
-
+### 2.4.2. Populism  
+#### GLMs all data
+*no impact of populism measure, populism_all, populism_dim*
+First, using variable populism_all (mean of populism questionnaire items 1-3)
+```{r poplitical bckgr pop_mean_all, echo=FALSE}
 Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
 Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "standard")
 
@@ -973,9 +1153,10 @@ Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "standard
 lmer (penal_RTs ~ charisma_lang_var*populism_all + start_iat + trialcount + age+ leadership_lang_var 
         + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5a
 summary (model5a)
-anova(model5a) 
-
-# using variable populism_dim (dimension 1 of Populism PCA)
+anova(model5a)
+```
+Second, using variable populism_dim (dimension 1 of Populism PCA)
+```{r poplitical bckgr pop_dim, echo=FALSE}
 
 #lmer (penal_RTs ~ charisma_lang_var*start_iat*populism_dim + trialcount + age+ leadership_lang_var 
        # + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5a
@@ -995,14 +1176,12 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat*populism4 + trialcount +age+ leade
         + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5c
 summary (model5c)
 anova(model5c)
-
 ```
-### populism subset analyes
+#### Populism subset analyes
 difference between 2nd blocks (charisma_lang_var*start_iat), i.e.impact of vernacular when starting with standard-with Charisma vs. impact of standard variety when starting with vernacular-with Charisma) is significant in low populism subset but not significant in high populism subset
 ```{r pop_subset analyses, echo=FALSE}
 
-lmer (penal_RTs ~ charisma_lang_var*start_iat+ trialcount + age+ leadership_lang_var 
-       + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_pop, REML = T, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_pop_high
+lmer (penal_RTs ~ charisma_lang_var*start_iat+ trialcount + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_pop, REML = T, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_pop_high
 summary (model_pop_high)
 anova(model_pop_high)
 emmeans(model_pop_high, specs = pairwise ~ charisma_lang_var:start_iat)
@@ -1019,7 +1198,7 @@ plot_model(model_pop_high, type = "int") +
   labs ( title = "Predicted values of RT", subtitle = "high populism group")+
   labs(colour="started IAT with mapping")->plot_model_pop_high
 plot_model_pop_high
-ggsave(here("Output", "Subset_pop_high_lang.varXstart.jpg"))
+#ggsave(here("Output", "Subset_pop_high_lang.varXstart.jpg"))
 
 
 
@@ -1028,31 +1207,35 @@ plot_model(model_pop_low, type = "int") +
     xlab("lang. variety mapped with Charisma")+
   labs ( title = "Predicted values of RT", subtitle = "low populism group")+labs(colour="started IAT with mapping")->plot_model_pop_low
 plot_model_pop_low
-ggsave(here("Output", "Subset_pop_low_lang.varXstart.jpg"))
+#ggsave(here("Output", "Subset_pop_low_lang.varXstart.jpg"))
 
 
 plot_model_pop_low
 
 plot_model_pop_high
 ```
-## populism & gender
-*all outgroup data*
-no impact of stimuli speaker/participant gender in complete data set with neither populism measure
-```{r populism_gender, echo=FALSE}
+#### Populism & gender
+Does gender impact on how populism mediates the effect of language variety on RTs?
 
-
+##### outgroup data
+*no impact of stimuli speaker/participant gender in complete data set with neither populism measure*
+First, variable populism_all (mean of populism items 1-3)
+```{r populism_all_gender, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var*populism_all*speaker_gender + start_iat + trialcount + age+ # pp_gender
         + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5b_gender
 summary (model5b_gender)
 anova(model5b_gender)
+```
+Second, variable populism_dim (first PC dimension reduction)
+```{r populism_dim_gender, echo=FALSE}
 
 lmer (penal_RTs ~ charisma_lang_var*populism_dim *speaker_gender + start_iat + trialcount + age+ # pp_gender
         + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5d_gender
 summary (model5d_gender)
 anova(model5d_gender)
-
 ```
-### subset analysis - low populism
+##### Subset analyses  
+###### low populism & speaker gender 
 no impact of gender stimuli speaker in populism subset (low) & populism_all/ populism_dim
 ```{r low_pop_subset speaker_gender, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var*populism_all*speaker_gender + start_iat + trialcount + age+ pp_gender
@@ -1065,9 +1248,8 @@ lmer (penal_RTs ~ charisma_lang_var*populism_dim*speaker_gender + start_iat + tr
 summary (model5blowPop)
 anova(model5blowPop)
 ```
-### subset analysis - low populism
+###### low populism & participant gender  
 no impact of participant gender in populism subset (low) & populism_all/ populism_dim
-
 ```{r low_pop_subset pp_gender, echo=FALSE}
 
 lmer (penal_RTs ~ charisma_lang_var*populism_all*pp_gender + start_iat + trialcount + age+ 
@@ -1080,10 +1262,8 @@ lmer (penal_RTs ~ charisma_lang_var*populism_dim*pp_gender + start_iat + trialco
 summary (model5blowPop)
 anova(model5blowPop)
 ```
-## populism &  speaker gender
-### subset analysis - high populism
+###### high populism & speaker gender  
 no impact of gender stimuli speaker in populism subset (high) & populism_all/ populism_dim
-
 ```{r high_pop_subset speaker_gender, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var*populism_all*speaker_gender + start_iat + trialcount + age+ pp_gender
         + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5highPop
@@ -1095,10 +1275,8 @@ lmer (penal_RTs ~ charisma_lang_var*populism_dim*speaker_gender + start_iat + tr
         + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5highPop
 summary (model5highPop)
 anova(model5highPop)
-
 ```
-## populism &  participant gender
-### subset analysis - high populism
+###### high populism & participant gender
 no impact of participant gender in populism subset (high) & populism_all/ populism_dim
 
 ```{r high_pop_subset pp_gender, echo=FALSE}
@@ -1112,8 +1290,8 @@ lmer (penal_RTs ~ charisma_lang_var*populism_dim*pp_gender + start_iat + trialco
 summary (model5highPop)
 anova(model5highPop)
 ```
-## populism & region
-*general analyses* 
+#### Populism & region 
+##### general GLMs 
 Simple effects: Sachsen as well as Brandenburg  diff. to ref.level (BaWü) in Standard variety & populism scale  
 ```{r pop_region, echo=FALSE}
 as.numeric(Four_Out$populism_all)->Four_Out$populism_all
@@ -1145,22 +1323,21 @@ xlab("Populism Score")->
 populism_regio
 populism_regio
 ```
-## populism & region
-### subset analyses - low populism
-```{r pop_region_subset, echo=FALSE}
+##### subset analyses - low populism
+```{r pop_region_subset_low, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var:bundesland + trialcount  + age+ leadership_lang_var + start_iat + (charisma_lang_var|bilendi_id) +  (populism_all|stimulus_ID), data = Four_Out_low_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_reg_pop_low
 summary (model_reg_pop_low)
 anova(model_reg_pop_low)
 ```
-### subset analyses - high populism
+#####subset analyses - high populism
 simple effect for Brandenburg standard compared to ref.level (BaWü) and Brandenburg compared standard vs. vernacular (positive slope)-> participants slower in trials with vernacular & charisma compared to Standard in Brandenburg
-```{r pop_region_subset, echo=FALSE}
+```{r pop_region_subset_high, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var:bundesland + trialcount  + age+ leadership_lang_var + start_iat + (charisma_lang_var|bilendi_id) +  (populism_all|stimulus_ID), data = Four_Out_high_pop,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_reg_pop_high
 summary (model_reg_pop_high)
 anova(model_reg_pop_high)
 ```
-## political background measures
-### political ideology
+### 2.4.3. Political ideology
+#### General
 ```{r political ideology, echo=FALSE}
 
 #as.numeric(scale(Four_Out$ideology))->Four_Out$ideology
@@ -1178,21 +1355,18 @@ plot_model(model5c, type = "pred", terms = c("ideology", "charisma_lang_var",  "
   
 plot_ideol_lang.varXstart
 
-ggsave(here("Output", "plot_ideol_lang.varXstart.jpg"))
+#ggsave(here("Output", "plot_ideol_lang.varXstart.jpg"))
 
 ```
-## political background measures
-### political ideology & gender
+#### Political ideology & gender
 ```{r political bckgr ideology gender, echo=FALSE}
 
 lmer (penal_RTs ~ charisma_lang_var*ideology*speaker_gender + start_iat + trialcount + age+ pp_gender + leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model5d
 summary (model5d)
 anova(model5d)
 ```
-# political background measures
-## voting behaviour
+### 2.4.4. Voting behaviour
 Simple effects in contrasts lang. variety level vernacular and Grün vs. LINKE, CDU/CSU vs. LINKE, AfD vs.LINKe approaching significance
-
 ```{r voting_behaviour, echo=FALSE}
 
 Four_Out$voting_behaviour = relevel(Four_Out$voting_behaviour, ref = "AfD")
@@ -1227,7 +1401,7 @@ plot_model(model5links, title = "Predicted Values of RT - Die LINKE", type = "pr
 xlab("Lang. variety mapped with charisma")+
   labs(colour="started IAT with mapping") ->plot_LINKE_lang.varXstart
 plot_LINKE_lang.varXstart
-ggsave(here("Output", "plot_LINKE_lang.varXstart.jpg"))
+#ggsave(here("Output", "plot_LINKE_lang.varXstart.jpg"))
 
 plot_model(model5links, type = "pred", terms = c("charisma_lang_var", "start_iat", "voting_behaviour")) +
   ggtitle("Predicted Values of RT - ref. die LINKE", subtitle = "Grouped by voting behaviour")+
@@ -1235,7 +1409,7 @@ plot_model(model5links, type = "pred", terms = c("charisma_lang_var", "start_iat
 xlab("Lang. variety mapped with charisma")+
   labs(colour="started IAT with mapping") ->plot_pol.behaviour_lang.varXstart
 plot_LINKE_lang.varXstart
-ggsave(here("Output", "plot_pol.behav_lang.varXstart.jpg"))
+#ggsave(here("Output", "plot_pol.behav_lang.varXstart.jpg"))
 
 
 Four_Out$voting_behaviour = relevel(Four_Out$voting_behaviour, ref = "SPD")
@@ -1253,9 +1427,8 @@ Four_Out%>%
   group_by(voting_other)%>%
 summarise(n_distinct(bilendi_id))-> overview_voting_other # Frei Wähler top, but overall only 6 pp
 ```
-# Outgroup
-## SES
-### prep & descriptives
+## 2.5. Impact of language variety & SES
+RQ: Do variables of participants' SES mediate how language variety impacts on reaction times?
 ```{r glm_outgroup_SES_measures1, echo=FALSE}
 
 as.factor(Four_Out$education)-> Four_Out$education
@@ -1268,15 +1441,8 @@ as.factor(Four_Out$training_other2)-> Four_Out$training_other2
 as.factor(Four_Out$sum_training)-> Four_Out$sum_training
 as.factor(Four_Out$sum_education)-> Four_Out$sum_education
 
-Four_Out%>%
-  group_by(education)%>%
-summarise(n_distinct(bilendi_id))-> overview_education
-
-Four_Out%>%
-  group_by(monthly_income)%>%
-summarise(n_distinct(bilendi_id))-> overview_monthly_income
 ```
-### all SES measures max.model
+### 2.5.1. Max.model
 simple effects for charisma_lang_varvernacular:education Realschulabschluss, Mittlere Reife, Fachschulreife oder Abschluss der polytechnischen Oberschule 10. Klasse, as well as Azubi/SchülerIn
 ```{r glm_outgroup_SES_measures_max, echo=FALSE}
 Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
@@ -1288,14 +1454,14 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat +
 summary (model6) 
 anova(model6)
 ```
-### Focus income
+### 2.5.2. Focus income
 ```{r glm_outgroup_SES_focus_income, echo=FALSE}
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat*monthly_income  + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6d
 summary (model6d)
 anova(model6d)
 ```
-### Focus education
+### 2.5.2. Focus education
 ```{r glm_outgroup_SES_focus education, echo=FALSE}
 unique(Four_Out$education)
 Four_Out$education = relevel(Four_Out$education , ref = "Abitur bzw. erweiterte Oberschule mit Abschluss 12. Klasse (Hochschulreife)")
@@ -1310,7 +1476,8 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat*education + trialcount + stim_cat 
 summary (model6c)
 anova(model6c)
 ```
-### Focus training
+### 2.5.3. Focus training
+Training meaning secondary education/ apprenticeship 
 ```{r glm_outgroup_SES_focus training, echo=FALSE}
 
 unique (Four_Out$training)
@@ -1320,7 +1487,9 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat*training + trialcount + stim_cat +
 summary (model6e)
 anova(model6e)
 ```
-### dummy variable sum_training
+### 2.5.4. Sum_training
+Dummy variable sum training by categorizing levels of variable training into three different categories of sum_traing, i.e. high, middle, low -> see data cleaning file
+*general impact*
 ```{r glm_outgroup_SES_sum_train_max, echo=FALSE}
 
 Four_Out$sum_training = relevel(Four_Out$sum_training , ref = "high")
@@ -1335,8 +1504,8 @@ lmer (penal_RTs ~ charisma_lang_var*sum_training + trialcount + stim_cat + age+ 
 summary (model6a)
 anova(model6a)
 ```
-### sum_training & gender
-```{r glm_outgroup_SES_train_gender, echo=FALSE}
+#### sum_training & gender
+```{r glm_SES_train_gender, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var*sum_training*speaker_gender + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6b
 summary (model6b)
 anova(model6b)
@@ -1345,7 +1514,8 @@ lmer (penal_RTs ~ charisma_lang_var*sum_training*pp_gender + trialcount + stim_c
 summary (model6b)
 anova(model6b)
 ```
-### dummy variable sum_education
+### 2.5.5. Sum_education
+*general*
 ```{r glm_outgroup_SES_dum_edu, echo=FALSE}
 
 Four_Out$sum_education = relevel(Four_Out$sum_education, ref = "high")
@@ -1353,62 +1523,47 @@ Four_Out$sum_education = relevel(Four_Out$sum_education, ref = "high")
 lmer (penal_RTs ~ charisma_lang_var*start_iat*sum_education + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model7
 summary (model7)
 anova(model7)
-
-
 ```
-### Subset analyses SES with dummy variables
-#### prep
-```{r subset_SES_prep, echo=FALSE}
-Four_Out%>%
-  filter(sum_training == "high")-> Four_Out_high_train
-Four_Out%>%
-  filter(sum_training == "middle")-> Four_Out_middle_train
-Four_Out%>%
-  filter(sum_training == "low")-> Four_Out_low_train
-Four_Out%>%
-  filter(sum_training == "middle" | sum_training == "low")-> Four_Out_middle_low_train
+### 2.5.6. Subset analyses SES with sum_variables
 
-
-Four_Out%>%
-  filter(sum_education == "high")-> Four_Out_high_edu
-Four_Out%>%
-  filter(sum_education == "middle")-> Four_Out_middle_edu
-Four_Out%>%
-  filter(sum_education == "low")-> Four_Out_low_edu
-Four_Out%>%
-  filter(sum_education == "middle" | sum_education == "low")-> Four_Out_middle_low_edu
-```
-### Subset analyses SES
-#### focus dummy variable education
-
-difference between subset high edu (2nd block sig. difference) & low edu (sig)
-as well as high edu subset (2nd block sig. difference) & middle + low edu (2nd block non-sig. difference)
-```{r subset_SES_glms, echo=FALSE}
-# high education
+#### Sum education
+##### Subset: High education
+difference 2nd blocks: lang. variety "vernacular" start iat "standard-with Charisma" vs. lang. variety "standard" start iat "vernacular-with Charisma" significantly different
+```{r subset_SES_high_edu, echo=FALSE}
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_edu,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_high_edu
 summary(model1_high_edu)
 anova(model1_high_edu)
-emmeans(model1_high_edu, specs = pairwise ~ charisma_lang_var:start_iat) # vernacular standard-with Charisma) - (standard vernacular-with Charisma) 2nd block sign.
+emmeans(model1_high_edu, specs = pairwise ~ charisma_lang_var:start_iat)
 
+plot_model(model1_high_edu, title = "Predicted Values of RT - high_edu", type = "int") +
+  ylab ("RT")+
+    xlab("mapped with Charisma")->plot_model_high_edu
 
-# Middle education
+#ggsave(here("Output", "Subset_high_edu_lang.varXstart.jpg"))
+plot_model_high_edu
+```
+##### Subset: middle education
+convergence issues
+no impact of language variety, i.e. no difference in 2nd block
+```{r subset_SES_middle_edu, echo=FALSE}
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_edu,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_middle_edu
 summary(model1_middle_edu)
 anova(model1_middle_edu)
 emmeans(model1_middle_edu, specs = pairwise ~ charisma_lang_var:start_iat)
-
-
-# Low education
+```
+##### Subset: low education
+```{r subset_SES_low_edu, echo=FALSE}
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_edu,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_low_edu
 summary(model1_low_edu)
 anova(model1_low_edu)
 emmeans(model1_low_edu, specs = pairwise ~ charisma_lang_var:start_iat)
+```
+##### Subset middle & low education
+2nd block non-sig. difference
+```{r subset_SES_middle_low_edu, echo=FALSE}
 
-
-
-# Middle & Low education
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_low_edu,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_Middle_low_edu
 summary(model1_Middle_low_edu)
 anova(model1_Middle_low_edu)
@@ -1418,23 +1573,49 @@ plot_model(model1_Middle_low_edu, title = "Predicted Values of RT - middle_low_e
   ylab ("RT")+
     xlab("mapped with Charisma")->plot_model_Middle_low_edu
 
-ggsave(here("Output", "Subset_middle_low_edu_lang.varXstart.jpg"))
-
-
-plot_model(model1_high_edu, title = "Predicted Values of RT - high_edu", type = "int") +
-  ylab ("RT")+
-    xlab("mapped with Charisma")->plot_model_high_edu
-
-ggsave(here("Output", "Subset_high_edu_lang.varXstart.jpg"))
-
+#ggsave(here("Output", "Subset_middle_low_edu_lang.varXstart.jpg"))
 plot_model_Middle_low_edu
-plot_model_high_edu
+
 ```
-## SES & populism
+#### Focus sum training
+##### Subset: high training
+no difference of 2nd blocks for no subsets
+```{r subset_SES_sum training, echo=FALSE}
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_high_train
+summary(model1_high_train)
+anova(model1_high_train)
+emmeans(model1_high_train, specs = pairwise ~ charisma_lang_var:start_iat)
+```
+##### Subset: middle training
+```{r subset_SES_middle_training, echo=FALSE}
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_middle_train
+
+summary(model1_middle_train)
+anova(model1_middle_train) 
+
+emmeans(model1_middle_train, specs = pairwise ~ charisma_lang_var:start_iat)
+```
+##### Subset: low training summary variable
+```{r subset_SES_low_training, echo=FALSE}
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_low_train
+summary(model1_low_train)
+anova(model1_low_train)
+emmeans(model1_low_train, specs = pairwise ~ charisma_lang_var:start_iat)
+```
+##### Subset: middle & low training
+```{r subset_SES_sum Middle_low_train, echo=FALSE}
+
+lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_low_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_Middle_low_train
+summary(model1_Middle_low_train)
+anova(model1_Middle_low_train)
+emmeans(model1_Middle_low_train, specs = pairwise ~ charisma_lang_var:start_iat)
+```
+## 2.6. SES & Populism
+### all data
 Impact of language variety in high education subset might be due to correlation of education with populism.
 -> sum_education/ sum_training positive slopes: the lower educated the higher populism scores, biggest difference between high and middle educated
 -> income less clear pattern
-
 ```{r SES_pop, echo=FALSE}
 levels(Four_Out$employment_status)
 levels(Four_Out$monthly_income) 
@@ -1485,45 +1666,8 @@ predicted_pop_income%>%ggplot(aes(x, predicted), dodge =0.9) +
 plot_pop_edu
 plot_pop_training
 plot_pop_income
-
-
 ```
-### Subset analyses SES
-#### focus dummy variable training
-no difference of 2nd blocks
-```{r subset_SES_sum training, echo=FALSE}
-# High training
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_high_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_high_train
-summary(model1_high_train)
-anova(model1_high_train)
-emmeans(model1_high_train, specs = pairwise ~ charisma_lang_var:start_iat)
-
-
-# Middle training
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_middle_train
-
-summary(model1_middle_train)
-anova(model1_middle_train) 
-
-emmeans(model1_middle_train, specs = pairwise ~ charisma_lang_var:start_iat)
-
-#Low training
-
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_low_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_low_train
-summary(model1_low_train)
-anova(model1_low_train)
-emmeans(model1_low_train, specs = pairwise ~ charisma_lang_var:start_iat)
-
-# Middle & Low training
-lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out_middle_low_train,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1_Middle_low_train
-summary(model1_Middle_low_train)
-anova(model1_Middle_low_train)
-emmeans(model1_Middle_low_train, specs = pairwise ~ charisma_lang_var:start_iat)
-```
-# Outgroup
-## MC Social Desirebility SCale
+## 2.7. MC Social Desirebility SCale
 Interaction charisma_lang_var standard:start_iat standard-with Charisma:score_MCSD sig. and negative => the stronger the socially desirable behaviour the stronger the association of standard & charisma (standard language ideology?)
 ```{r outgroup_MCSDs, echo=FALSE}
 
@@ -1544,12 +1688,10 @@ plot_model(model3_MCSD, title = "Predicted Values of RT - MC Social Desirablilit
     xlab("SD Score")->plot_model_MCSD
 
 plot_model_MCSD
-
-ggsave(here("Output", "MCSD_lang.varXstart.jpg"))
-
+#ggsave(here("Output", "MCSD_lang.varXstart.jpg"))
 ```
-# Ingroup
-2nd block diff. Hochdeutsch Dialect-w/oCharisma) - (Dialekt Hochdeutsch-w/oCharisma not sign, 1st block neither
+# 4. Ingroup
+convergence issues, 2nd block diff. Hochdeutsch Dialect-w/oCharisma) - (Dialekt Hochdeutsch-w/oCharisma not sign, 1st block neither
 ```{r glm_age_co RT_ingr ZCorr_Four_In, echo=FALSE}
 
 
@@ -1579,5 +1721,4 @@ plot_model(model_in_gr, title = "Predicted Values of RT", type = "int") +
   ylab ("RT")+
     xlab("mapping with Charisma")->plot_in_group_lang.varXstart
 plot_in_group_lang.varXstart
-
 ```
