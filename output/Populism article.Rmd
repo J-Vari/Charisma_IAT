@@ -22,7 +22,7 @@ library (here)
 * Social Identity Theory of Leadership (Hogg et al): Charisma as positive attribute of leader, leader most likely individual who is perceived to be prototypical members of ingroup.
 * definition of populism and link to in- and outgroup
 * previous socioling. Studies on listeners’ perception of speaker as part of their in and outgroup based on regional accent and standard language.  
-* regionalism and populism 
+* regionalism and populism (Heinisch et al Comparative European Politics 2018): populism in the context of center-periphery debate (US south against coastal elites, West Canada, ,. 
 
 
 **Hypothesis:** 
