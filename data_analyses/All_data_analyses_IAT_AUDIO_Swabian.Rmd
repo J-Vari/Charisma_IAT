@@ -862,12 +862,12 @@ plot_corr_matrix
 
 #ggsave(here ("output", "plot_corr_matrix.jpg"))
 ```
-## 2.2. Impact language variety only
+## 3.2. Impact language variety only
 RQ: Do participants associate standard language variety more with charisma compared the vernacular variety? i.e. Are RTs faster when standard variety is mapped on the same key as charisma compared to when vernacular variety is mapped with charisma independent from study type (which mapping of language variety & charisma participants start with)?
 
 Reaction time experiments need to take into account age related slowing. Two options to address age related slowing in model: 1) use z-scored RTs as DV 2) use age as co-variant
 
-### 2.2.1. GLMs with age standardised RTs as DV
+### 3.2.1. GLMs with age standardised RTs as DV
 
 But: all models are singular fits, continue with age as co-variant
 ```{r glm_age_st_RTs, eval=FALSE, include=FALSE}
@@ -883,7 +883,7 @@ allFit(model1a)
 summary (model1a)
 anova(model1a)
 ```
-### 2.2.2 GLMS - age as covariant  
+### 3.2.2 GLMS - age as covariant  
 Max. model regarding experimental variables
 ```{r glm_outgroup_max.model, echo=FALSE}
 Four_Out$start_iat = relevel(Four_Out$start_iat, ref = "standard-with Charisma")
@@ -919,8 +919,8 @@ Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "vernacul
 lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + age+ leadership_lang_var  + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model1b
 summary(model1b)
 ```
-## 2.3. Language variety plus foci 
-### 2.3.1. Age
+## 3.3. Language variety plus foci 
+### 3.3.1. Age
 explore age related slowing: present in general but not in interaction with study type variable "start_iat" & "charisma_lang_var".
 ```{r glm_age, echo=FALSE}
 # Max. Model: age
@@ -957,7 +957,7 @@ plot_int_age # why are there no confidence intervals
 
 #ggsave(here("output", "age_slow_effect.jpg")) 
 ```
-### 2.3.2 Family language  
+### 3.3.2 Family language  
 ```{r glm_outgroup_family.bio, echo=FALSE}
 Four_Out$family_member1_cat.response = relevel(Four_Out$family_member1_cat.response , ref = "standard")
 
@@ -987,14 +987,14 @@ plot_fam2.Bio
 
 #ggsave(here ("output", "int_fam.Bio2.jpg"))
 ```
-### 2.3.3 Region
+### 3.3.3 Region
 no impact of region/ Bundesland
 ```{r glm_outgroup_region, echo=FALSE}
 lmer (penal_RTs ~  charisma_lang_var*start_iat*bundesland + trialcount + age+ leadership_lang_var + stim_cat + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))-> model_region
 summary(model_region) 
 anova (model_region)
 ```
-### 2.3.4 Focus gender
+### 3.3.4 Focus gender
 #### Speaker gender
 no significant difference between female vernacular - male vernacular & female standard - male standard
 ```{r glm_outgroup_speak_gender, echo=FALSE}
@@ -1125,9 +1125,9 @@ xlab("Lang. variety mapped with charisma")->Plot_Four_Out_male2
 Plot_Four_Out_male2
 #ggsave(here("Output", "Four_Out_male2.jpg"))
 ```
-## 2.4. Language variety & political background
+## 3.4. Language variety & political background
 RQ: Do variables of participants' political background mediate how language variety impacts on reaction times?
-### 2.4.1. GLMs: Max model
+### 3.4.1. GLMs: Max model
 ```{r poplitical bckgr max model, echo=FALSE}
 # Max. Model all political background measures
 
@@ -1137,7 +1137,7 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat + age+ lea
 summary (model5)
 anova(model5)
 ```
-### 2.4.2. Populism  
+### 3.4.2. Populism  
 #### GLMs all data
 *no impact of populism measure, populism_all, populism_dim*
 First, using variable populism_all (mean of populism questionnaire items 1-3)
@@ -1336,7 +1336,7 @@ lmer (penal_RTs ~ charisma_lang_var:bundesland + trialcount  + age+ leadership_l
 summary (model_reg_pop_high)
 anova(model_reg_pop_high)
 ```
-### 2.4.3. Political ideology
+### 3.4.3. Political ideology
 #### General
 ```{r political ideology, echo=FALSE}
 
@@ -1365,7 +1365,7 @@ lmer (penal_RTs ~ charisma_lang_var*ideology*speaker_gender + start_iat + trialc
 summary (model5d)
 anova(model5d)
 ```
-### 2.4.4. Voting behaviour
+### 3.4.4. Voting behaviour
 Simple effects in contrasts lang. variety level vernacular and Grün vs. LINKE, CDU/CSU vs. LINKE, AfD vs.LINKe approaching significance
 ```{r voting_behaviour, echo=FALSE}
 
@@ -1427,7 +1427,7 @@ Four_Out%>%
   group_by(voting_other)%>%
 summarise(n_distinct(bilendi_id))-> overview_voting_other # Frei Wähler top, but overall only 6 pp
 ```
-## 2.5. Impact of language variety & SES
+## 3.5. Impact of language variety & SES
 RQ: Do variables of participants' SES mediate how language variety impacts on reaction times?
 ```{r glm_outgroup_SES_measures1, echo=FALSE}
 
@@ -1442,7 +1442,7 @@ as.factor(Four_Out$sum_training)-> Four_Out$sum_training
 as.factor(Four_Out$sum_education)-> Four_Out$sum_education
 
 ```
-### 2.5.1. Max.model
+### 3.5.1. Max.model
 simple effects for charisma_lang_varvernacular:education Realschulabschluss, Mittlere Reife, Fachschulreife oder Abschluss der polytechnischen Oberschule 10. Klasse, as well as Azubi/SchülerIn
 ```{r glm_outgroup_SES_measures_max, echo=FALSE}
 Four_Out$start_iat = relevel(Four_Out$start_iat , ref = "standard-with Charisma")
@@ -1454,14 +1454,14 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat + trialcount + stim_cat +
 summary (model6) 
 anova(model6)
 ```
-### 2.5.2. Focus income
+### 3.5.2. Focus income
 ```{r glm_outgroup_SES_focus_income, echo=FALSE}
 
 lmer (penal_RTs ~ charisma_lang_var*start_iat*monthly_income  + trialcount + stim_cat + age+ leadership_lang_var + (charisma_lang_var|bilendi_id) +  (start_iat|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model6d
 summary (model6d)
 anova(model6d)
 ```
-### 2.5.2. Focus education
+### 3.5.2. Focus education
 ```{r glm_outgroup_SES_focus education, echo=FALSE}
 unique(Four_Out$education)
 Four_Out$education = relevel(Four_Out$education , ref = "Abitur bzw. erweiterte Oberschule mit Abschluss 12. Klasse (Hochschulreife)")
@@ -1476,7 +1476,7 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat*education + trialcount + stim_cat 
 summary (model6c)
 anova(model6c)
 ```
-### 2.5.3. Focus training
+### 3.5.3. Focus training
 Training meaning secondary education/ apprenticeship 
 ```{r glm_outgroup_SES_focus training, echo=FALSE}
 
@@ -1487,7 +1487,7 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat*training + trialcount + stim_cat +
 summary (model6e)
 anova(model6e)
 ```
-### 2.5.4. Sum_training
+### 3.5.4. Sum_training
 Dummy variable sum training by categorizing levels of variable training into three different categories of sum_traing, i.e. high, middle, low -> see data cleaning file
 *general impact*
 ```{r glm_outgroup_SES_sum_train_max, echo=FALSE}
@@ -1514,7 +1514,7 @@ lmer (penal_RTs ~ charisma_lang_var*sum_training*pp_gender + trialcount + stim_c
 summary (model6b)
 anova(model6b)
 ```
-### 2.5.5. Sum_education
+### 3.5.5. Sum_education
 *general*
 ```{r glm_outgroup_SES_dum_edu, echo=FALSE}
 
@@ -1524,7 +1524,7 @@ lmer (penal_RTs ~ charisma_lang_var*start_iat*sum_education + trialcount + stim_
 summary (model7)
 anova(model7)
 ```
-### 2.5.6. Subset analyses SES with sum_variables
+### 3.5.6. Subset analyses SES with sum_variables
 
 #### Sum education
 ##### Subset: High education
@@ -1611,7 +1611,7 @@ summary(model1_Middle_low_train)
 anova(model1_Middle_low_train)
 emmeans(model1_Middle_low_train, specs = pairwise ~ charisma_lang_var:start_iat)
 ```
-## 2.6. SES & Populism
+## 3.6. SES & Populism
 ### all data
 Impact of language variety in high education subset might be due to correlation of education with populism.
 -> sum_education/ sum_training positive slopes: the lower educated the higher populism scores, biggest difference between high and middle educated
@@ -1667,7 +1667,7 @@ plot_pop_edu
 plot_pop_training
 plot_pop_income
 ```
-## 2.7. MC Social Desirebility SCale
+## 3.7. MC Social Desirebility SCale
 Interaction charisma_lang_var standard:start_iat standard-with Charisma:score_MCSD sig. and negative => the stronger the socially desirable behaviour the stronger the association of standard & charisma (standard language ideology?)
 ```{r outgroup_MCSDs, echo=FALSE}
 
