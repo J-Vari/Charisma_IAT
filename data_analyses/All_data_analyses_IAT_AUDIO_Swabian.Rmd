@@ -877,11 +877,11 @@ Four_Out$charisma_lang_var = relevel(Four_Out$charisma_lang_var, ref = "standard
 
 # lmer (z_scored_RTS1 ~ charisma_lang_var*start_iat + trialcount + stim_cat +(charisma_lang_var|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence
 
-lmer (z_scored_RTS1 ~ charisma_lang_var*start_iat + trialcount + stim_cat +(1|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence
+#lmer (z_scored_RTS1 ~ charisma_lang_var*start_iat + trialcount + stim_cat +(1|bilendi_id) +  (1|stimulus_ID), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model1a # no convergence
 
-allFit(model1a) 
-summary (model1a)
-anova(model1a)
+#allFit(model1a) 
+#summary (model1a)
+#anova(model1a)
 ```
 ### 3.2.2 GLMS - age as covariant  
 Max. model regarding experimental variables
@@ -910,6 +910,7 @@ plot_model(model1a, title = "Predicted values of reaction times", type = "pred",
 plot_model1a
 
 #ggsave(here ("output", "int_lang.variety_start_iat.jpg"))
+report(model1a)
 ```
 change reference level to vernacular
 ```{r glm_outgroup_best_fit_model_diff_ref_level, echo=FALSE}
