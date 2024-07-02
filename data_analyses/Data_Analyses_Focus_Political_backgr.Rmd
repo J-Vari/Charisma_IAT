@@ -472,6 +472,39 @@ n_distinct (Four_Out_high_pop$bilendi_id)
 n_distinct (Four_Out_low_pop$bilendi_id)
 ```
 ## political background measures
+### correlations populism_all & poplitical ideology 
+no or very low correlations
+```{r poplitical bckgr corr, include=FALSE}
+as.numeric(scale (Four_Out$populism_dim))-> Four_Out$populism_dim
+as.numeric(scale (Four_Out$populism_all))-> Four_Out$populism_all 
+
+Four_Out%>%
+  ungroup()%>%
+  select(ideology, populism1, populism2, populism3, populism4, populism_dim, populism_all)-> bckgr_poli_ideo
+
+cor(bckgr_poli_ideo)->matrix_bckgr_poli_ideo
+matrix_bckgr_poli_ideo
+```
+## political background measures
+### party affiliation & populism
+```{r poplitical bckgr party_pop, include=FALSE}
+# lmer (populism_all ~ age+ pp_gender + ideology + voting_behaviour + sum_education + sum_training + (ideology|bilendi_id), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_poli_ideo # no convergence
+
+# lmer (populism_all ~ age+ pp_gender + ideology + voting_behaviour + sum_education + sum_training + (1|bilendi_id), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_poli_ideo #  no convergence
+
+levels(Four_Out$voting_behaviour)
+
+Four_Out%>%
+  filter(voting_behaviour != "invalid" | voting_behaviour != "no_answer")%>%
+  distinct(bilendi_id, voting_behaviour, ideology, populism_all)-> Four_Out_pop_ideo
+
+
+lmer (populism_all ~ ideology + voting_behaviour 
+        + (1|bilendi_id), data = Four_Out,  REML = TRUE, lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5))) -> model_poli_ideo 
+summary (model_poli_ideo)
+
+```
+## political background measures
 ### GLMs: Max model
 ```{r poplitical bckgr max model, echo=FALSE}
 # Max. Model all political background measures
